@@ -69,15 +69,22 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.0") // Or latest version
+    implementation("androidx.compose.ui:ui:1.5.0") // Or latest version
+    implementation("androidx.compose.material3:material3:1.0.1") // Or latest version
+    implementation("androidx.compose.ui:ui-tooling-preview:1.5.0")  // For preview support
+
+
     val room_version = "2.6.1"
 
     implementation("androidx.room:room-runtime:$room_version")
-    annotationProcessor("androidx.room:room-compiler:$room_version")
+    //annotationProcessor("androidx.room:room-compiler:$room_version")
+    kapt("androidx.room:room-compiler:$room_version")
 
     // To use Kotlin annotation processing tool (kapt)
-    kapt("androidx.room:room-compiler:$room_version")
+    //kapt("androidx.room:room-compiler:$room_version")
     // To use Kotlin Symbol Processing (KSP)
-    ksp("androidx.room:room-compiler:$room_version")
+    //ksp("androidx.room:room-compiler:$room_version")
 
     // optional - Kotlin Extensions and Coroutines support for Room
     implementation("androidx.room:room-ktx:$room_version")
