@@ -35,23 +35,27 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ExpenseTrackerTheme {
-                //provide the viewmodels with their factory
-                val expenseViewModel : ExpenseViewModel = viewModel(
+                // Provide the viewmodels with their factory
+                val expenseViewModel: ExpenseViewModel = viewModel(
                     factory = ExpenseViewModelFactory(expenseRepository)
                 )
 
-                val incomeViewModel : IncomeViewModel = viewModel(
+                val incomeViewModel: IncomeViewModel = viewModel(
                     factory = IncomeViewModelFactory(incomeRepository)
                 )
+                        // Apply padding to avoid overlap with system bars if needed
+                        MainScreen(
+                            expenseViewModel = expenseViewModel,
+                            incomeViewModel = incomeViewModel,
+                            //modifier = Modifier.fillMaxSize().padding(paddingValues)
+                        )
 
-                    MainScreen(
-                        expenseViewModel = expenseViewModel,
-                        incomeViewModel = incomeViewModel
-                    )
-                }
+
             }
         }
     }
+}
+
 
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {

@@ -6,14 +6,18 @@ import com.example.expensetracker.model.Expense
 class ExpenseRepository(private val expenseDao: ExpenseDao){
 
     suspend fun getAllExpenses(): List<Expense> {
-        return expenseDao.getAllExpenses()
+        val expenses =  expenseDao.getAllExpenses()
+        android.util.Log.d("ExpenseRepository","All expenses : $expenses")
+        return expenses
     }
 
     suspend fun insert(expense: Expense){
+        android.util.Log.d("ExpenseRepository","Inserting expense : $expense")
         expenseDao.insertExpense(expense)
     }
 
     suspend fun delete(expense: Expense){
+        android.util.Log.d("ExpenseRepository","Deleting expense : $expense")
         expenseDao.deleteExpense(expense)
     }
 }

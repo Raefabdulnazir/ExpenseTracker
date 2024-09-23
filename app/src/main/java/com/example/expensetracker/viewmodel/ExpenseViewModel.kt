@@ -18,12 +18,15 @@ class ExpenseViewModel(private val repository: ExpenseRepository):ViewModel(){
 
     private fun fetchAllExpenses(){
         viewModelScope.launch {
-            _allExpenses.value = repository.getAllExpenses()
+            val Expenses = repository.getAllExpenses()
+            _allExpenses.value = Expenses
+            android.util.Log.d("ExpenseViewModel","All expenses : $Expenses")
         }
     }
 
     fun insert(expense: Expense){
         viewModelScope.launch {
+            android.util.Log.d("ExpenseViewModel","Inserting expense : $expense")
             repository.insert(expense)
             fetchAllExpenses()//update the list
         }
@@ -31,6 +34,7 @@ class ExpenseViewModel(private val repository: ExpenseRepository):ViewModel(){
 
     fun delete(expense: Expense){
         viewModelScope.launch {
+            android.util.Log.d("ExpenseViewModel","Deleting expense : $expense")
             repository.delete(expense)
             fetchAllExpenses()//update the list
         }

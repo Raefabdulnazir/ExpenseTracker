@@ -1,13 +1,18 @@
 package com.example.expensetracker.screens
 
+import android.icu.util.CurrencyAmount
 import android.util.Log
 import android.widget.Space
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,11 +20,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,6 +41,8 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -57,15 +68,25 @@ fun MainScreen( expenseViewModel: ExpenseViewModel = viewModel(), incomeViewMode
     Column(modifier = Modifier
         .fillMaxSize()
         .padding(16.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.CenterHorizontally) {
 
         var showAddTransactionDialog by remember {
             mutableStateOf(false)
         }
 
+        // Observe the incomes and expenses LiveData - this 2 lines resolved the error of showing "no expenses or incomes.." when the app is launched
+        //observeAsState is an extension function in Compose that allows u to observe LiveData in a reactive way , meaning
+        val incomesState = incomeViewModel.allIncomes.observeAsState()
+        val expensesState = expenseViewModel.allExpense.observeAsState()
+
         //get the list of incomes and expense
-        val incomes = incomeViewModel.allIncomes.value?:emptyList()
-        val expenses = expenseViewModel.allExpense.value?:emptyList()
+        val incomes = incomesState.value?:emptyList()
+        val expenses = expensesState.value?:emptyList()
+
+        //Log the data to check if income and expense list is correctly being fetched
+        Log.d("Main Screen","Incomes : $incomes")
+        Log.d("Main Screen", "Expenses : $expenses")
 
         //calculate total income and total expense
         val totalIncome = calculateTotalIncome(incomes)
@@ -74,11 +95,13 @@ fun MainScreen( expenseViewModel: ExpenseViewModel = viewModel(), incomeViewMode
         //calculate total balance
         val totalBalance = calculateTotalBalance(totalIncome,totalExpense)
 
-        TotalBalanceDisplay(totalBalance)
+        /*TotalBalanceDisplay(totalBalance)
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        TotalIncomeExpenseDisplay(totalIncome,totalExpense)
+        TotalIncomeExpenseDisplay(totalIncome,totalExpense)*/
+
+        SummaryCardSection(totalBalance = totalBalance, totalIncome = totalIncome, totalExpense = totalExpense)
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -185,26 +208,42 @@ fun CombinedListDisplay(incomes: List<Income> , expenses: List<Expense>){
             modifier = Modifier.fillMaxWidth()
         )
     }
-    LazyColumn {
-            items(incomes + expenses){ item ->
+
+    //merging both list and soring on the basis of date
+    val combinedSortedList = (incomes + expenses).sortedByDescending { item ->
+        when(item){
+            is Income -> item.date//access date property of income
+            is Expense -> item.date//access date property of expense
+            else -> 0L //default value for invalid case
+        }
+    }
+
+    RecentTransactions(combinedSortedList)
+
+    /*LazyColumn(modifier = Modifier
+        .fillMaxHeight(0.6f)
+        .padding(vertical = 8.dp)) {
+            items(combinedSortedList){ item ->
                 when(item){
                     is Income ->{
-                        Text(
-                            text = "Income : ${item.category} - ${item.amount}",
-                            style = MaterialTheme.typography.displayMedium,
+                        TransactionRow(
+                            label = "Income",
+                            category = item.category,
+                            amount = item.amount,
                             color = MaterialTheme.colorScheme.secondary
                         )
                     }
                     is Expense ->{
-                        Text(
-                            text = "Expense : ${item.category} - ${item.amount}",
-                            style = MaterialTheme.typography.displayMedium,
+                        TransactionRow(
+                            label = "Expense",
+                            category = item.category,
+                            amount = item.amount,
                             color = MaterialTheme.colorScheme.error
                         )
                     }
                 }
             }
-        }
+        }*/
     }
 
 //Add button
@@ -387,6 +426,210 @@ fun DropDownMenu(
                     }
                 )
             }
+        }
+    }
+}
+//TransactionRow - this function is for clean display of each transaction
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun TransactionRow(label: String,category: String,amount: Double,color: Color,onEdit: ()->Unit,onDelete: ()->Unit){
+
+    var showMenu by remember {
+        mutableStateOf(false)
+    }
+
+    Text(
+        text = "$label : $category - $amount",
+        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
+        color = color,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+            .combinedClickable(onClick = {}, onLongClick = { showMenu = true })//to activate edit or delete menu , we have to long press the txn
+    )
+    
+    if(showMenu){
+        AlertDialog(
+            onDismissRequest = { showMenu = false },
+            title = { Text(text = "Choose Action") },
+            text = {
+                Column {
+                    Button(onClick = {
+                        onEdit()
+                        showMenu = false
+                    }) {
+                        Text(text = "Edit")
+                    }
+                    Button(onClick = { 
+                        onDelete()
+                        showMenu = false
+                    }) {
+                        Text(text = "Delete")
+                    }
+                }
+            },
+            confirmButton = { /*TODO*/ })
+    }
+    
+}
+
+//SummaryCard - This function is to display cards for total balance ,income and expense
+@Composable
+fun SummaryCard(title: String , amount: Double , backgroundColor: Color , modifier: Modifier = Modifier){
+    Card(
+        modifier = modifier
+            .padding(8.dp)
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "$amount",
+                style = MaterialTheme.typography.headlineSmall,
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+fun SummaryCardSection(totalBalance: Double , totalIncome: Double , totalExpense: Double){
+    Column {
+        SummaryCard(
+            title = "Total Balance",
+            amount = totalBalance,
+            backgroundColor = Color(0xFF1A237E),//dark blue
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+    //one row for income box and expense box
+    Row (
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly //to spread evenly
+    ){
+        SummaryCard(
+            title = "Total Income",
+            amount = totalIncome,
+            backgroundColor = Color(0xFF8BC34A), // Light Green
+            modifier = Modifier.weight(1f)// Occupy half of the width)
+        )
+        SummaryCard(
+            title = "Total Expense",
+            amount = totalExpense,
+            backgroundColor = Color(0xFFFFCDD2),// Light Red
+            modifier = Modifier.weight(1f)//Occupy half of the width
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun TransactionCard(label: String,category: String,amount: Double,isExpense: Boolean){
+
+    var showMenu by remember {
+        mutableStateOf(false)
+    }
+
+    Card(
+        modifier = Modifier
+            .padding(8.dp)
+            .fillMaxWidth()
+            .combinedClickable(onClick = {}, onLongClick = { showMenu = true }),//to activate edit or delete menu , we have to long press the txn
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp,Color.LightGray),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+    ) {
+
+        if(showMenu){
+            AlertDialog(
+                onDismissRequest = { showMenu = false },
+                title = { Text(text = "Choose Action") },
+                text = {
+                    Column {
+                        Button(onClick = {
+                            //onEdit()
+                            showMenu = false
+                        }) {
+                            Text(text = "Edit")
+                        }
+                        Button(onClick = {
+                            //onDelete()
+                            showMenu = false
+                        }) {
+                            Text(text = "Delete")
+                        }
+                    }
+                },
+                confirmButton = { /*TODO*/ })
+        }
+
+        Row (
+            modifier = Modifier
+                .padding(8.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ){
+            Column {
+                //description to be added to the database
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = category,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+            Text(
+                text = "$amount",
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (isExpense) Color.Red else Color.Green,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+fun RecentTransactions(transactions: List<Any>){
+    Text(
+        text = "Recent Transactions",
+        modifier = Modifier.padding(8.dp),
+        style = MaterialTheme.typography.headlineSmall
+    )
+    LazyColumn (
+        modifier = Modifier
+            .fillMaxHeight(0.6f)
+            .padding(vertical = 8.dp)
+    ){
+        items(transactions) { transaction ->
+            val isExpense = when(transaction){
+                is Income -> false
+                is Expense -> true
+                else -> return@items// Skip if the transaction is neither Income nor Expense
+            }
+            val title = if (transaction is Income) transaction.title else (transaction as Expense).title
+            val category = if (transaction is Income) transaction.category else (transaction as Expense).category
+            val amount = if (transaction is Income) transaction.amount else (transaction as Expense).amount
+
+            TransactionCard(
+                label = title,
+                category = category,
+                amount = amount,
+                isExpense = isExpense)
         }
     }
 }

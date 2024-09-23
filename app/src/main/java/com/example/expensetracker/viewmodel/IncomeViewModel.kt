@@ -19,12 +19,15 @@ class IncomeViewModel(private val repository: IncomeRepository):ViewModel() {
 
     private fun fetchAllIncomes(){
         viewModelScope.launch{
-            _allIncomes.value = repository.getAllIncomes()
+            val incomes = repository.getAllIncomes()
+            _allIncomes.value = incomes
+            android.util.Log.d("IncomeViewModel","All incomes : $incomes")
         }
     }
 
     fun insert(income: Income){
         viewModelScope.launch {
+            android.util.Log.d("IncomeViewModel","Inserting income : $income")
             repository.insert(income)
             fetchAllIncomes()//updating the list
         }
@@ -32,6 +35,7 @@ class IncomeViewModel(private val repository: IncomeRepository):ViewModel() {
 
     fun delete(income: Income){
         viewModelScope.launch {
+            android.util.Log.d("IncomeViewModel","Deleting income : $income")
             repository.delete(income)
             fetchAllIncomes()//updating the list
         }
