@@ -109,20 +109,42 @@ fun MainScreen( expenseViewModel: ExpenseViewModel = viewModel(), incomeViewMode
         //combine income and expense into one list
         //val combinedList = combineIncomeExpense(incomes,expenses)
 
-        CombinedListDisplay(incomes, expenses)
+        CombinedListDisplay(
+            incomes,
+            expenses,
+            //TODO - edit transaction
+/*            onEditTransaction = {transaction ->
+                editTranscation = transaction //set the transaction to be edited
+                showAddTransactionDialog = true //Show the dialog
+            },*/
+            onDeleteTransaction = {transaction ->
+                //delete the transaction from the viewmodel
+                when(transaction){
+                    is Income -> incomeViewModel.delete(transaction)
+                    is Expense -> expenseViewModel.delete(transaction)
+                }
+            }
+        )
         
         Spacer(modifier = Modifier.height(16.dp))
 
         AddExpenseIncomeButton(onClick = {showAddTransactionDialog = true})
 
         if(showAddTransactionDialog){//show the add txn dialogue if the button is clicked
+            val transactionToEdit = null
             AddTransactionDialogue(
                 onDismiss = {showAddTransactionDialog = false},
                 onAddTransaction = {transactionType , category , amount ->
-                    if(transactionType == "Income"){
-                        incomeViewModel.insert(Income(title = "Income", amount = amount, date = System.currentTimeMillis() , category = category))
-                    }else if (transactionType == "Expense"){
-                        expenseViewModel.insert(Expense(title = "Expense", amount = amount,date = System.currentTimeMillis() , category = category))
+                    if(transactionToEdit == null){
+                        //adding a new transaction
+                        if(transactionType == "Income"){
+                            incomeViewModel.insert(Income(title = "Income", amount = amount, date = System.currentTimeMillis() , category = category))
+                        }else if (transactionType == "Expense"){
+                            expenseViewModel.insert(Expense(title = "Expense", amount = amount,date = System.currentTimeMillis() , category = category))
+                        }
+                    }else{
+                        //editing a new transaction - TODO
+
                     }
                     showAddTransactionDialog = false //hide the dialogue after adding the txn
                 }
@@ -196,7 +218,11 @@ fun combineIncomeExpense(incomes: List<Income>, expenses: List<Expense>):List<An
 */
 
 @Composable
-fun CombinedListDisplay(incomes: List<Income> , expenses: List<Expense>){
+fun CombinedListDisplay(
+    incomes: List<Income>,
+    expenses: List<Expense>,
+    onDeleteTransaction: (Any) -> Unit
+    ){
     if(incomes.isEmpty() && expenses.isEmpty()){
         Text(
             text = "No expenses or incomes. Press the add button to add them to the list.",
@@ -207,44 +233,18 @@ fun CombinedListDisplay(incomes: List<Income> , expenses: List<Expense>){
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.fillMaxWidth()
         )
-    }
-
-    //merging both list and soring on the basis of date
-    val combinedSortedList = (incomes + expenses).sortedByDescending { item ->
-        when(item){
-            is Income -> item.date//access date property of income
-            is Expense -> item.date//access date property of expense
-            else -> 0L //default value for invalid case
-        }
-    }
-
-    RecentTransactions(combinedSortedList)
-
-    /*LazyColumn(modifier = Modifier
-        .fillMaxHeight(0.6f)
-        .padding(vertical = 8.dp)) {
-            items(combinedSortedList){ item ->
-                when(item){
-                    is Income ->{
-                        TransactionRow(
-                            label = "Income",
-                            category = item.category,
-                            amount = item.amount,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                    }
-                    is Expense ->{
-                        TransactionRow(
-                            label = "Expense",
-                            category = item.category,
-                            amount = item.amount,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
+    }else{
+        //merging both list and soring on the basis of date
+        val combinedSortedList = (incomes + expenses).sortedByDescending { item ->
+            when(item){
+                is Income -> item.date//access date property of income
+                is Expense -> item.date//access date property of expense
+                else -> 0L //default value for invalid case
             }
-        }*/
+        }
+        RecentTransactions(combinedSortedList, onDeleteTransaction)
     }
+}
 
 //Add button
 @Composable
@@ -534,7 +534,14 @@ fun SummaryCardSection(totalBalance: Double , totalIncome: Double , totalExpense
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun TransactionCard(label: String,category: String,amount: Double,isExpense: Boolean){
+fun TransactionCard(
+    label: String,
+    category: String,
+    amount: Double,
+    isExpense: Boolean,
+    //onEdit: () -> Unit,
+    onDelete: () -> Unit
+){
 
     var showMenu by remember {
         mutableStateOf(false)
@@ -556,14 +563,14 @@ fun TransactionCard(label: String,category: String,amount: Double,isExpense: Boo
                 title = { Text(text = "Choose Action") },
                 text = {
                     Column {
-                        Button(onClick = {
+/*                        Button(onClick = {
                             //onEdit()
                             showMenu = false
                         }) {
                             Text(text = "Edit")
-                        }
+                        }*/
                         Button(onClick = {
-                            //onDelete()
+                            onDelete()
                             showMenu = false
                         }) {
                             Text(text = "Delete")
@@ -604,7 +611,11 @@ fun TransactionCard(label: String,category: String,amount: Double,isExpense: Boo
 }
 
 @Composable
-fun RecentTransactions(transactions: List<Any>){
+fun RecentTransactions(
+    transactions: List<Any>,
+    //onEditTransaction: (Any) -> Unit,//pass the whole transaction object for editing
+    onDeleteTransaction: (Any) -> Unit//pass the whole transaction object for deleting
+    ){
     Text(
         text = "Recent Transactions",
         modifier = Modifier.padding(8.dp),
@@ -629,7 +640,9 @@ fun RecentTransactions(transactions: List<Any>){
                 label = title,
                 category = category,
                 amount = amount,
-                isExpense = isExpense)
+                isExpense = isExpense,
+                //onEdit = {onEditTransaction(transaction)},
+                onDelete = {onDeleteTransaction(transaction)})
         }
     }
 }
