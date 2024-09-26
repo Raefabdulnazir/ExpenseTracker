@@ -75,6 +75,10 @@ fun MainScreen( expenseViewModel: ExpenseViewModel = viewModel(), incomeViewMode
             mutableStateOf(false)
         }
 
+        var editTransaction by remember { //this is to store the transaction to be edited
+            mutableStateOf<Any?>(null)
+        }
+
         // Observe the incomes and expenses LiveData - this 2 lines resolved the error of showing "no expenses or incomes.." when the app is launched
         //observeAsState is an extension function in Compose that allows u to observe LiveData in a reactive way , meaning
         val incomesState = incomeViewModel.allIncomes.observeAsState()
@@ -113,10 +117,10 @@ fun MainScreen( expenseViewModel: ExpenseViewModel = viewModel(), incomeViewMode
             incomes,
             expenses,
             //TODO - edit transaction
-/*            onEditTransaction = {transaction ->
-                editTranscation = transaction //set the transaction to be edited
+            onEditTransaction = {transaction ->
+                editTransaction = transaction //set the transaction to be edited
                 showAddTransactionDialog = true //Show the dialog
-            },*/
+            },
             onDeleteTransaction = {transaction ->
                 //delete the transaction from the viewmodel
                 when(transaction){
@@ -131,7 +135,7 @@ fun MainScreen( expenseViewModel: ExpenseViewModel = viewModel(), incomeViewMode
         AddExpenseIncomeButton(onClick = {showAddTransactionDialog = true})
 
         if(showAddTransactionDialog){//show the add txn dialogue if the button is clicked
-            val transactionToEdit = null
+            val transactionToEdit = editTransaction
             AddTransactionDialogue(
                 onDismiss = {showAddTransactionDialog = false},
                 onAddTransaction = {transactionType , category , amount ->
@@ -143,11 +147,46 @@ fun MainScreen( expenseViewModel: ExpenseViewModel = viewModel(), incomeViewMode
                             expenseViewModel.insert(Expense(title = "Expense", amount = amount,date = System.currentTimeMillis() , category = category))
                         }
                     }else{
-                        //editing a new transaction - TODO
+                        when(transactionToEdit){
+                            is Income -> {
+                                if(transactionType == "Expense"){
+                                    incomeViewModel.delete(transactionToEdit)
+                                    expenseViewModel.insert(
+                                        Expense(title = transactionType, amount = amount, date = System.currentTimeMillis(), category = category)
+                                    )
+                                }else{
+                                    incomeViewModel.update(
+                                        transactionToEdit.copy(
+                                            title = transactionType,
+                                            category = category,
+                                            amount = amount
+                                        )
+                                    )
+                                }
+                            }
+                            is Expense -> {
+                                if(transactionType == "Income"){
+                                    expenseViewModel.delete(transactionToEdit)
+                                    incomeViewModel.insert(
+                                        Income(title = transactionType, amount = amount, date = System.currentTimeMillis(), category = category)
+                                    )
+                                }else{
+                                    expenseViewModel.update(
+                                        transactionToEdit.copy(
+                                            title = transactionType,
+                                            category = category,
+                                            amount = amount
+                                        )
+                                    )
+                                }
+                            }
+                        }
 
                     }
                     showAddTransactionDialog = false //hide the dialogue after adding the txn
-                }
+                    editTransaction = null
+                },
+                transaction = transactionToEdit
             )
         }
     }
@@ -198,29 +237,11 @@ fun TotalIncomeExpenseDisplay(totalIncome: Double,totalExpense: Double){
 
 }
 
-/*
-@Composable
-fun combineIncomeExpense(incomes: List<Income>, expenses: List<Expense>):List<Any>{
-    if (incomes.isEmpty() && expenses.isEmpty()){//if the list is empty then display a message
-        Text(
-            text = "No expenses or incomes. Press the add button to add them to the list.",
-            style = MaterialTheme.typography.displayMedium.copy(
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            ),
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.fillMaxWidth()
-        )
-        return emptyList()
-    }
-    return incomes + expenses
-}
-*/
-
 @Composable
 fun CombinedListDisplay(
     incomes: List<Income>,
     expenses: List<Expense>,
+    onEditTransaction: (Any) -> Unit,
     onDeleteTransaction: (Any) -> Unit
     ){
     if(incomes.isEmpty() && expenses.isEmpty()){
@@ -242,7 +263,7 @@ fun CombinedListDisplay(
                 else -> 0L //default value for invalid case
             }
         }
-        RecentTransactions(combinedSortedList, onDeleteTransaction)
+        RecentTransactions(combinedSortedList, onEditTransaction, onDeleteTransaction)
     }
 }
 
@@ -263,7 +284,8 @@ fun AddExpenseIncomeButton(onClick: () -> Unit) {
 @Composable
 fun AddTransactionDialogue(
     onDismiss: () -> Unit,
-    onAddTransaction: (String, String, Double) -> Unit
+    onAddTransaction: (String, String, Double) -> Unit,
+    transaction: Any? = null//Optional parameter to pass the transaction to edit
 ) {
     var transactionType by remember {
         mutableStateOf("Income")
@@ -289,7 +311,10 @@ fun AddTransactionDialogue(
     AlertDialog(
         onDismissRequest = { onDismiss() },
         title = {
-            Text(text = "Add transaction")
+            if(transaction == null)
+                Text(text = "Add transaction")
+            else
+                Text(text = "Edit transaction")
         },
         text = {
             Column {
@@ -307,51 +332,6 @@ fun AddTransactionDialogue(
                 var categories = if (transactionType == "Income") incomeCategories else expenseCategories
 
                 DropDownMenu(items = categories, selectedItem = {category = it}, defaultItem = "Select Category")
-                
-                // Category dropdown menu
- /*               ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = {
-                        expanded = !expanded
-                        Log.d("Dropdown", "Dropdown expanded: $expanded")
-                    }
-                ) {
-                    // Category input
-                    TextField(
-                        value = category,
-                        onValueChange = { category = it },
-                        label = { Text(text = "Category") },
-                        readOnly = true,  // Make it read-only to show dropdown
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp)
-                            .clickable { expanded = !expanded },//ensure it toggles on click
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                        },
-                        colors = ExposedDropdownMenuDefaults.textFieldColors()  // Set default text field colors
-                    )
-
-                    // Dropdown menu items
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = {
-                            expanded = false
-                            Log.d("Dropdown", "Dropdown dismissed")
-                        }
-                    ) {
-                        categories.forEach { selectedCategory ->
-                            DropdownMenuItem(
-                                text = { Text(text = selectedCategory) },  // Show the category
-                                onClick = {
-                                    category = selectedCategory
-                                    expanded = false  // Close the dropdown
-                                    Log.d("Dropdown", "Selected category: $selectedCategory")
-                                }
-                            )
-                        }
-                    }
-                }*/
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -376,7 +356,11 @@ fun AddTransactionDialogue(
                     Log.d("AddTransaction", "Invalid input: Category=$category, Amount=$amount")
                 }
             }) {
-                Text(text = "Add")
+                if(transaction == null){
+                    Text(text = "Add")
+                }else{
+                    Text(text = "Save")
+                }
             }
         },
         dismissButton = {
@@ -539,7 +523,7 @@ fun TransactionCard(
     category: String,
     amount: Double,
     isExpense: Boolean,
-    //onEdit: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ){
 
@@ -563,12 +547,12 @@ fun TransactionCard(
                 title = { Text(text = "Choose Action") },
                 text = {
                     Column {
-/*                        Button(onClick = {
-                            //onEdit()
+                        Button(onClick = {
+                            onEdit()
                             showMenu = false
                         }) {
                             Text(text = "Edit")
-                        }*/
+                        }
                         Button(onClick = {
                             onDelete()
                             showMenu = false
@@ -613,7 +597,7 @@ fun TransactionCard(
 @Composable
 fun RecentTransactions(
     transactions: List<Any>,
-    //onEditTransaction: (Any) -> Unit,//pass the whole transaction object for editing
+    onEditTransaction: (Any) -> Unit,//pass the whole transaction object for editing
     onDeleteTransaction: (Any) -> Unit//pass the whole transaction object for deleting
     ){
     Text(
@@ -641,8 +625,9 @@ fun RecentTransactions(
                 category = category,
                 amount = amount,
                 isExpense = isExpense,
-                //onEdit = {onEditTransaction(transaction)},
-                onDelete = {onDeleteTransaction(transaction)})
+                onEdit = {onEditTransaction(transaction)},
+                onDelete = {onDeleteTransaction(transaction)}
+            )
         }
     }
 }

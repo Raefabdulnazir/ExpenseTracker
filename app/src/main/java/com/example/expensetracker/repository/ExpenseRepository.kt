@@ -20,4 +20,10 @@ class ExpenseRepository(private val expenseDao: ExpenseDao){
         android.util.Log.d("ExpenseRepository","Deleting expense : $expense")
         expenseDao.deleteExpense(expense)
     }
+
+    suspend fun update(expense: Expense){
+        android.util.Log.d("ExpenseRepository","Updating expense : $expense")
+        expenseDao.updateExpense(expense)
+    }
+
 }

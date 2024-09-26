@@ -21,4 +21,9 @@ class IncomeRepository(private val incomeDao: IncomeDao) {
         incomeDao.deleteIncome(income)
     }
 
+    suspend fun update(income: Income){
+        android.util.Log.d("IncomeRepository","Updating income : $income")
+        incomeDao.updateIncome(income)
+    }
+
 }

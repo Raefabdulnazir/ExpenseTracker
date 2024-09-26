@@ -20,4 +20,6 @@ interface IncomeDao {
     @Delete
     suspend fun deleteIncome(income: Income)
 
+    @Update
+    suspend fun updateIncome(income: Income)
 }

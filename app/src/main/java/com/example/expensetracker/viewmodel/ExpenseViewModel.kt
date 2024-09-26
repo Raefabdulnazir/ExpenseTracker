@@ -39,4 +39,13 @@ class ExpenseViewModel(private val repository: ExpenseRepository):ViewModel(){
             fetchAllExpenses()//update the list
         }
     }
+
+    fun update(expense: Expense){
+        viewModelScope.launch {
+            android.util.Log.d("ExpenseViewModel","Updating expense : $expense")
+            repository.update(expense)
+            fetchAllExpenses()
+        }
+    }
+
 }

@@ -40,4 +40,12 @@ class IncomeViewModel(private val repository: IncomeRepository):ViewModel() {
             fetchAllIncomes()//updating the list
         }
     }
+
+    fun update(income: Income){
+        viewModelScope.launch {
+            android.util.Log.d("IncomeViewModel","Updating income : $income")
+            repository.update(income)
+            fetchAllIncomes()
+        }
+    }
 }
