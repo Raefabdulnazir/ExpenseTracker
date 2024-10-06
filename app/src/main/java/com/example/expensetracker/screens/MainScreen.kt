@@ -1,8 +1,10 @@
 package com.example.expensetracker.screens
 
 import android.icu.util.CurrencyAmount
+import android.os.Build
 import android.util.Log
 import android.widget.Space
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -22,6 +24,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
@@ -34,6 +40,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -60,8 +68,14 @@ import com.example.expensetracker.model.Income
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import java.time.Instant
+import java.time.LocalDate
+import java.time.Month
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlin.math.exp
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MainScreen( expenseViewModel: ExpenseViewModel = viewModel(), incomeViewModel: IncomeViewModel = viewModel()){
 
@@ -71,6 +85,10 @@ fun MainScreen( expenseViewModel: ExpenseViewModel = viewModel(), incomeViewMode
         verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.CenterHorizontally) {
 
+        var currentMonth by remember {
+            mutableStateOf(LocalDate.now())
+        }
+
         var showAddTransactionDialog by remember {
             mutableStateOf(false)
         }
@@ -78,6 +96,12 @@ fun MainScreen( expenseViewModel: ExpenseViewModel = viewModel(), incomeViewMode
         var editTransaction by remember { //this is to store the transaction to be edited
             mutableStateOf<Any?>(null)
         }
+        
+        monthSelector(
+            currentMonth = currentMonth,
+            onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
+            onNextMonth = { currentMonth = currentMonth.plusMonths(1) }
+        )
 
         // Observe the incomes and expenses LiveData - this 2 lines resolved the error of showing "no expenses or incomes.." when the app is launched
         //observeAsState is an extension function in Compose that allows u to observe LiveData in a reactive way , meaning
@@ -85,8 +109,8 @@ fun MainScreen( expenseViewModel: ExpenseViewModel = viewModel(), incomeViewMode
         val expensesState = expenseViewModel.allExpense.observeAsState()
 
         //get the list of incomes and expense
-        val incomes = incomesState.value?:emptyList()
-        val expenses = expensesState.value?:emptyList()
+        val incomes = incomesState.value?.filterByMonth(currentMonth)?:emptyList()
+        val expenses = expensesState.value?.filterByMonth(currentMonth)?:emptyList()
 
         //Log the data to check if income and expense list is correctly being fetched
         Log.d("Main Screen","Incomes : $incomes")
@@ -628,6 +652,51 @@ fun RecentTransactions(
                 onEdit = {onEditTransaction(transaction)},
                 onDelete = {onDeleteTransaction(transaction)}
             )
+        }
+    }
+}
+
+//Function to filter transactions on the basis of selected month    //doubt-need to study
+//<T> means generic , it means it can work with any type of data like expense or income
+//this - refers to the list on which the function is called
+//filter - iterates over each item of the list and executes the code inside the braces
+@RequiresApi(Build.VERSION_CODES.O)
+fun <T> List<T>.filterByMonth(selectedMonth: LocalDate): List<T> {
+    return this.filter {
+        val transactionDate = when (it){
+            is Income -> it.date
+            is Expense -> it.date
+            else -> return@filter false
+        }
+        val localDate = Instant.ofEpochMilli(transactionDate).atZone(ZoneId.systemDefault()).toLocalDate()  //converting the date to localdate
+        localDate.month == selectedMonth.month && localDate.year == selectedMonth.year  //checking if the transaction matches the selected month and year
+    }
+}
+
+
+//month selector composable
+@RequiresApi(Build.VERSION_CODES.O) //I added this because Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Previous Month") was not supported on api sdk lower than 26
+@Composable
+fun monthSelector(
+    currentMonth: LocalDate,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit
+){
+    Row (
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxWidth()
+    ){
+        IconButton(onClick = onPreviousMonth) {
+            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous Month")
+        }
+        Text(
+            text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+        IconButton(onClick = onNextMonth) {
+            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next Month")
         }
     }
 }
