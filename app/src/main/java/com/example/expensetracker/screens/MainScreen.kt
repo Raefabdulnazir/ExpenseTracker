@@ -271,8 +271,8 @@ fun CombinedListDisplay(
     if(incomes.isEmpty() && expenses.isEmpty()){
         Text(
             text = "No expenses or incomes. Press the add button to add them to the list.",
-            style = MaterialTheme.typography.displayMedium.copy(
-                fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.displaySmall.copy(
+                fontWeight = FontWeight.Light,
                 textAlign = TextAlign.Center
             ),
             color = MaterialTheme.colorScheme.primary,
@@ -327,7 +327,7 @@ fun AddTransactionDialogue(
 
     //category list for incomes and expenses
     val incomeCategories = listOf("Salary", "Side-income", "Business", "Others")
-    val expenseCategories = listOf("Groceries", "Rent", "Utilities", "Transportation", "Entertainment", "Investment", "Others")
+    val expenseCategories = listOf("House/Rent", "Healthcare", "Clothing", "Personal Care", "Education", "Food", "Groceries","Entertainment","Transportation","Utilities","Other")
 
     var selectedCategory by remember {
         mutableStateOf("")

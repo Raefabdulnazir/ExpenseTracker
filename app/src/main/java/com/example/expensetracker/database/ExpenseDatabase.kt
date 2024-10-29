@@ -4,15 +4,18 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.example.expensetracker.dao.BudgetDao
 import com.example.expensetracker.dao.ExpenseDao
 import com.example.expensetracker.dao.IncomeDao
 import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.Income
+import com.example.expensetracker.model.Budget
 
-@Database(entities = [Expense::class, Income::class], version = 1)
+@Database(entities = [Expense::class, Income::class, Budget::class], version = 3)
 abstract class ExpenseDatabase : RoomDatabase() {
     abstract fun expenseDao(): ExpenseDao
     abstract fun incomeDao(): IncomeDao
+    abstract fun budgetDao(): BudgetDao
 
     companion object {
         //@Volatile enures that INSTANCE variable is visible to all the threads
@@ -28,7 +31,7 @@ abstract class ExpenseDatabase : RoomDatabase() {
                     context.applicationContext,//use applicationContext to avoid memory leaks
                     ExpenseDatabase::class.java,
                     "expense_database"//name of the database file
-                ).build()
+                ).fallbackToDestructiveMigration().build()//fallbackToDestructiveMigration() destroys and rebuilds the database automatically when scheme change is detected
                 //set the INSTANCE variable to the newly created database instance
                 INSTANCE = instance
                 instance
