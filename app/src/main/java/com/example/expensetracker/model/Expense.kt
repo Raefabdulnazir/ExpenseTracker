@@ -12,5 +12,6 @@ data class Expense(
     val title: String,
     val amount: Double,
     val date: Long,//storing the data as timestamp
-    val category: String
+    val category: String,
+    val month: String//store in "YYYY-MM" format //this was updated to update the budgetspent in each budget category
 )

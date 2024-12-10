@@ -31,4 +31,8 @@ class BudgetRepository(private val budgetDao: BudgetDao) {
         android.util.Log.d("BudgetRepository","Updating budget : $budget")
         budgetDao.updateBudget(budget)
     }
+
+    suspend fun getBudgetByCategory(categoryName: String): Budget? {
+       return budgetDao.getBudgetByCategory(categoryName)
+    }
 }

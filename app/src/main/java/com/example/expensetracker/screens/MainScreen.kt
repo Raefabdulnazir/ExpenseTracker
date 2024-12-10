@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import com.example.expensetracker.viewmodel.IncomeViewModel
+import com.example.expensetracker.viewmodel.BudgetViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.room.Transaction
 import com.example.expensetracker.model.Expense
@@ -68,6 +69,7 @@ import com.example.expensetracker.model.Income
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import com.example.expensetracker.getCurrentMonth
 import java.time.Instant
 import java.time.LocalDate
 import java.time.Month
@@ -166,40 +168,44 @@ fun MainScreen( expenseViewModel: ExpenseViewModel = viewModel(), incomeViewMode
                     if(transactionToEdit == null){
                         //adding a new transaction
                         if(transactionType == "Income"){
-                            incomeViewModel.insert(Income(title = "Income", amount = amount, date = System.currentTimeMillis() , category = category))
+                            incomeViewModel.insert(Income(title = "Income", amount = amount, date = System.currentTimeMillis() , category = category , month = getCurrentMonth()))
                         }else if (transactionType == "Expense"){
-                            expenseViewModel.insert(Expense(title = "Expense", amount = amount,date = System.currentTimeMillis() , category = category))
+                            expenseViewModel.insert(Expense(title = "Expense", amount = amount,date = System.currentTimeMillis() , category = category , month = getCurrentMonth()))
                         }
                     }else{
                         when(transactionToEdit){
                             is Income -> {
+                                val oldMonth = transactionToEdit.month
                                 if(transactionType == "Expense"){
                                     incomeViewModel.delete(transactionToEdit)
                                     expenseViewModel.insert(
-                                        Expense(title = transactionType, amount = amount, date = System.currentTimeMillis(), category = category)
+                                        Expense(title = transactionType, amount = amount, date = System.currentTimeMillis(), category = category, month = oldMonth)
                                     )
                                 }else{
                                     incomeViewModel.update(
                                         transactionToEdit.copy(
                                             title = transactionType,
                                             category = category,
-                                            amount = amount
+                                            amount = amount,
+                                            month = oldMonth
                                         )
                                     )
                                 }
                             }
                             is Expense -> {
+                                val oldMonth = transactionToEdit.month
                                 if(transactionType == "Income"){
                                     expenseViewModel.delete(transactionToEdit)
                                     incomeViewModel.insert(
-                                        Income(title = transactionType, amount = amount, date = System.currentTimeMillis(), category = category)
+                                        Income(title = transactionType, amount = amount, date = System.currentTimeMillis(), category = category, month = oldMonth)
                                     )
                                 }else{
                                     expenseViewModel.update(
                                         transactionToEdit.copy(
                                             title = transactionType,
                                             category = category,
-                                            amount = amount
+                                            amount = amount,
+                                            month = oldMonth
                                         )
                                     )
                                 }
@@ -327,7 +333,7 @@ fun AddTransactionDialogue(
 
     //category list for incomes and expenses
     val incomeCategories = listOf("Salary", "Side-income", "Business", "Others")
-    val expenseCategories = listOf("House/Rent", "Healthcare", "Clothing", "Personal Care", "Education", "Food", "Groceries","Entertainment","Transportation","Utilities","Other")
+    val expenseCategories = listOf("House/Rent", "Healthcare", "Shopping", "Personal Care", "Education", "Food", "Groceries","Entertainment","Transportation","Utilities","Other")
 
     var selectedCategory by remember {
         mutableStateOf("")

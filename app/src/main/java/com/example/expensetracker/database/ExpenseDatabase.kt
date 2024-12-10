@@ -11,7 +11,7 @@ import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.Income
 import com.example.expensetracker.model.Budget
 
-@Database(entities = [Expense::class, Income::class, Budget::class], version = 3)
+@Database(entities = [Expense::class, Income::class, Budget::class], version = 4)
 abstract class ExpenseDatabase : RoomDatabase() {
     abstract fun expenseDao(): ExpenseDao
     abstract fun incomeDao(): IncomeDao

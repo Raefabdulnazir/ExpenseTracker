@@ -9,5 +9,6 @@ data class Income (
     val title: String,
     val amount: Double,
     val date: Long,// storing the date as timestamp
-    val category: String
+    val category: String,
+    val month: String//store in "YYYY-MM" format
 )

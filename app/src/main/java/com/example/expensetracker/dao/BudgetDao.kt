@@ -24,4 +24,7 @@ interface BudgetDao {
 
     @Query("SELECT * FROM budget_table WHERE month = :month")
     suspend fun getBudgetByMonth(month: String):List<Budget>
+
+    @Query("SELECT * FROM budget_table WHERE categoryName = :categoryName LIMIT 1")//LIMIT 1 is used to specify that only first result should be returned , even if there are multiple records matching the criteria.
+    suspend fun getBudgetByCategory(categoryName: String): Budget?//Budget? means that it could return NULL if no budget exists for the given category name
 }

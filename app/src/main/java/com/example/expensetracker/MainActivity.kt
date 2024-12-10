@@ -2,6 +2,7 @@ package com.example.expensetracker
 
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -37,6 +38,7 @@ import com.example.expensetracker.repository.BudgetRepository
 import com.example.expensetracker.screens.BudgetPlannerScreen
 import com.example.expensetracker.viewmodel.BudgetViewModel
 import com.example.expensetracker.viewmodel.BudgetViewModelFactory
+import java.util.Calendar
 
 //defining the screens for bottom navigation
 sealed class Screen(val route: String,val title:String){
@@ -48,18 +50,53 @@ sealed class Screen(val route: String,val title:String){
 
 class MainActivity : ComponentActivity() {
 
-    private val expenseDatabase by lazy { ExpenseDatabase.getDatabase(applicationContext) }
+/*    private val expenseDatabase by lazy { ExpenseDatabase.getDatabase(applicationContext) }
 
-    private val expenseRepository by lazy { ExpenseRepository(expenseDatabase.expenseDao()) }
-    private val incomeRepository by lazy { IncomeRepository(expenseDatabase.incomeDao()) }
+    // Initialize budgetRepository first
     private val budgetRepository by lazy { BudgetRepository(expenseDatabase.budgetDao()) }
+
+    // Initialize expenseRepository next
+    private val expenseRepository by lazy { ExpenseRepository(expenseDatabase.expenseDao()) }
+
+    private val incomeRepository by lazy { IncomeRepository(expenseDatabase.incomeDao()) }
+
+    // Initialize budgetViewModel after repositories
+    private val budgetViewModel by lazy { BudgetViewModel(budgetRepository, expenseRepository) }*/
+
+    //code 2
+    private lateinit var expenseDatabase: ExpenseDatabase
+    private lateinit var budgetRepository: BudgetRepository
+    private lateinit var expenseRepository: ExpenseRepository
+    private lateinit var incomeRepository: IncomeRepository
+    private lateinit var budgetViewModel: BudgetViewModel
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        //expenseRepository.budgetViewModel = budgetViewModel//raef test code
+        try {
+            // Initialize dependencies
+            expenseDatabase = ExpenseDatabase.getDatabase(applicationContext)
+            budgetRepository = BudgetRepository(expenseDatabase.budgetDao())
+            expenseRepository = ExpenseRepository(expenseDatabase.expenseDao())
+            incomeRepository = IncomeRepository(expenseDatabase.incomeDao())
+
+            // Initialize ViewModel
+            budgetViewModel = BudgetViewModel(budgetRepository, expenseRepository)
+
+            // Resolve dependency
+            expenseRepository.budgetViewModel = budgetViewModel
+
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error during initialization: ${e.message}", e)
+            return // Stop execution if initialization fails
+        }
         setContent {
+            Log.d("MainActivity", "Inside setContent block")
             ExpenseTrackerTheme {
+                Log.d("MainActivity", "Inside ExpenseTrackerTheme block")
                 // Provide the viewmodels with their factory
                 val expenseViewModel: ExpenseViewModel = viewModel(
                     factory = ExpenseViewModelFactory(expenseRepository)
@@ -70,7 +107,7 @@ class MainActivity : ComponentActivity() {
                 )
 
                 val budgetViewModel: BudgetViewModel = viewModel(
-                    factory = BudgetViewModelFactory(budgetRepository)
+                    factory = BudgetViewModelFactory(budgetRepository,expenseRepository)
                 )
 
                 //Set up the navcontroller for the managing screen transitions
@@ -160,4 +197,11 @@ fun SetUpNavGraph(navController: NavHostController , incomeViewModel: IncomeView
         }
     }
 
+}
+
+fun getCurrentMonth(): String{
+    val calender = Calendar.getInstance()
+    val month = calender.get(Calendar.MONTH) + 1//Calendar.MONTH is zero based
+    val year = calender.get(Calendar.YEAR)
+    return "$year-${month.toString().padStart(2,'0')}"
 }

@@ -10,6 +10,6 @@ data class Budget(
     //val totalBudget: Double,
     val categoryName: String,
     val categoryBudget: Double,
-    val categorySpent: Double = 0.0,
+    var categorySpent: Double = 0.0,
     val alertThreshold: Double = 0.0//threshold to trigger alerts
 )
