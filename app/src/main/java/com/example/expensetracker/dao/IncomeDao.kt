@@ -22,4 +22,8 @@ interface IncomeDao {
 
     @Update
     suspend fun updateIncome(income: Income)
+
+    @Query("SELECT SUM(amount) FROM income_table WHERE category = :category AND month = :month")
+    suspend fun getTotalIncomeByCategory(category: String,month: String): Double?
+
 }

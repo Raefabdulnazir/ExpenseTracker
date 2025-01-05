@@ -35,7 +35,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHost
 import com.example.expensetracker.repository.BudgetRepository
+import com.example.expensetracker.screens.AnalyticsScreen
 import com.example.expensetracker.screens.BudgetPlannerScreen
+import com.example.expensetracker.viewmodel.AnalyticsViewModel
+import com.example.expensetracker.viewmodel.AnalyticsViewModelFactory
 import com.example.expensetracker.viewmodel.BudgetViewModel
 import com.example.expensetracker.viewmodel.BudgetViewModelFactory
 import java.util.Calendar
@@ -69,6 +72,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var expenseRepository: ExpenseRepository
     private lateinit var incomeRepository: IncomeRepository
     private lateinit var budgetViewModel: BudgetViewModel
+    private lateinit var analyticsViewModel: AnalyticsViewModel
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -88,6 +92,8 @@ class MainActivity : ComponentActivity() {
 
             // Resolve dependency
             expenseRepository.budgetViewModel = budgetViewModel
+
+            analyticsViewModel = AnalyticsViewModel(expenseRepository,incomeRepository)
 
         } catch (e: Exception) {
             Log.e("MainActivity", "Error during initialization: ${e.message}", e)
@@ -110,6 +116,10 @@ class MainActivity : ComponentActivity() {
                     factory = BudgetViewModelFactory(budgetRepository,expenseRepository)
                 )
 
+                val analyticsViewModel: AnalyticsViewModel = viewModel(
+                    factory = AnalyticsViewModelFactory(expenseRepository,incomeRepository)
+                )
+
                 //Set up the navcontroller for the managing screen transitions
                 //navController manages the navigation between different screens in the app and tracks the curretn destinatioon.
                 val navController = rememberNavController()
@@ -124,6 +134,7 @@ class MainActivity : ComponentActivity() {
                         incomeViewModel = incomeViewModel,
                         expenseViewModel = expenseViewModel,
                         budgetViewModel = budgetViewModel,
+                        analyticsViewModel = analyticsViewModel,
                         modifier = Modifier.padding(paddingValues)
                     )
                 }
@@ -177,7 +188,17 @@ fun BottomNavigationBar(navController: NavHostController){
 // It defines what to do when a user clicks on a tab, linking the screen's route to the corresponding content.
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun SetUpNavGraph(navController: NavHostController , incomeViewModel: IncomeViewModel , expenseViewModel: ExpenseViewModel , budgetViewModel: BudgetViewModel , modifier: Modifier = Modifier){
+fun SetUpNavGraph(
+    navController: NavHostController ,
+    incomeViewModel: IncomeViewModel ,
+    expenseViewModel: ExpenseViewModel ,
+    budgetViewModel: BudgetViewModel ,
+    analyticsViewModel: AnalyticsViewModel,
+    modifier: Modifier = Modifier
+){
+
+    val month = getCurrentMonth()
+
     NavHost(
         navController = navController ,
         startDestination = Screen.Transaction.route ,
@@ -190,7 +211,10 @@ fun SetUpNavGraph(navController: NavHostController , incomeViewModel: IncomeView
             BudgetPlannerScreen(budgetViewModel)
         }
         composable(Screen.Analysis.route) { 
-            Text(text = "Analysis Screen")
+            AnalyticsScreen(
+                viewModel = analyticsViewModel,
+                currentMonth = month
+            )
         }
         composable(Screen.Settings.route) { 
             Text(text = "Settings Screen")

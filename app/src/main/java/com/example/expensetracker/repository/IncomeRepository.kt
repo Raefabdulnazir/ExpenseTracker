@@ -26,4 +26,10 @@ class IncomeRepository(private val incomeDao: IncomeDao) {
         incomeDao.updateIncome(income)
     }
 
+    suspend fun getTotalIncomeByCategory(category: String,month: String): Double? {
+        val totalIncomeByCategory = incomeDao.getTotalIncomeByCategory(category,month)
+        android.util.Log.d("IncomeRepository","Total Income of $category : $totalIncomeByCategory")
+        return totalIncomeByCategory
+    }
+
 }

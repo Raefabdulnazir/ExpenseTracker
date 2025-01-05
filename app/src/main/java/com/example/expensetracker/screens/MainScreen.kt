@@ -332,7 +332,7 @@ fun AddTransactionDialogue(
     }
 
     //category list for incomes and expenses
-    val incomeCategories = listOf("Salary", "Side-income", "Business", "Others")
+    val incomeCategories = listOf("Salary", "Side-income", "Business", "Rewards", "Others")
     val expenseCategories = listOf("House/Rent", "Healthcare", "Shopping", "Personal Care", "Education", "Food", "Groceries","Entertainment","Transportation","Utilities","Other")
 
     var selectedCategory by remember {
