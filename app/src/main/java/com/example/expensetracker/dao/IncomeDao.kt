@@ -5,9 +5,10 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Delete
-
 import androidx.room.*
+import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.Income
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface IncomeDao {
@@ -15,7 +16,10 @@ interface IncomeDao {
     suspend fun insertIncome(income: Income)
 
     @Query("SELECT * FROM income_table ORDER BY date DESC")
-    suspend fun getAllIncomes(): List<Income>
+    fun getAllIncomes(): Flow<List<Income>>
+
+    @Query("SELECT * FROM income_table WHERE category = :category")
+    fun getIncomesByCategory(category: String): Flow<List<Income>>
 
     @Delete
     suspend fun deleteIncome(income: Income)

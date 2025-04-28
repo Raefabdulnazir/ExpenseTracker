@@ -9,14 +9,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.expensetracker.repository.CategoryRepository
 import com.example.expensetracker.repository.IncomeRepository
 import com.example.expensetracker.ui.theme.incomeCategoryColors
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Date
 
 class AnalyticsViewModel(
     private val expenseRepository : ExpenseRepository,   //I added expenserepository for getting the category spent to update it on analysis graph
-    private val incomeRepository: IncomeRepository
+    private val incomeRepository: IncomeRepository,
+    private val categoryRepository: CategoryRepository
 ) : ViewModel(){    //ViewModel superclass
     //the detailed notes of below 2 lines are down at the end
     private val _pieChartData = MutableStateFlow<List<PieChartData>>(emptyList())//holds the current state of pie chart data . only viewmodel can modify this value
@@ -43,16 +46,19 @@ class AnalyticsViewModel(
     //suspend function to fetch pie chart data for a specifc month
     suspend fun getPieChartDataForMonth(month: String) : List<PieChartData>{
 
+        val expenseCategories = categoryRepository.getAllCategories("Expense").first()
+
         val pieChartDataList = mutableListOf<PieChartData>()
 
-        for (category in categoryColors.keys){
-            val totalSpent = expenseRepository.getTotalSpentByCategory(category,month) ?: 0.0
+        //quick fixes - toString , need to check
+        for (category in expenseCategories){
+            val totalSpent = expenseRepository.getTotalSpentByCategory(category.name,month) ?: 0.0
             if (totalSpent > 0.0) {
                 pieChartDataList.add(
                     PieChartData(
-                        category = category,
+                        category = category.name,
                         value = totalSpent,
-                        color = categoryColors[category] ?: Color.Gray// Use default color if not found
+                        color = getUniqueCategoryColor(category.name,true)
                     )
                 )
             }
@@ -62,16 +68,18 @@ class AnalyticsViewModel(
 
     suspend fun getIncomePieChartDataForMonth(month: String) : List<PieChartData>{
 
+        val incomeCategories = categoryRepository.getAllCategories("Income").first()
+
         val pieChartDataList = mutableListOf<PieChartData>()
 
-        for (category in incomeCategoryColors.keys){
-            val totalIncome = incomeRepository.getTotalIncomeByCategory(category, month) ?: 0.0
+        for (category in incomeCategories){
+            val totalIncome = incomeRepository.getTotalIncomeByCategory(category.name, month) ?: 0.0
             if (totalIncome>0.0) {
                 pieChartDataList.add(
                     PieChartData(
-                        category = category,
+                        category = category.name,
                         value = totalIncome,
-                        color = incomeCategoryColors[category] ?: Color.Gray
+                        color = getUniqueCategoryColor(category.name,false)
                     )
                 )
             }
@@ -79,6 +87,32 @@ class AnalyticsViewModel(
         return pieChartDataList
     }
 }
+
+fun generateRandomColor(): Color{
+    return Color(
+        red = (50..200).random() / 255f,
+        green = (50..200).random() / 255f,
+        blue = (50..200).random() / 255f,
+        alpha = 1f
+    )
+}
+
+fun getUniqueCategoryColor(category: String,isExpenseSelected: Boolean): Color {
+    // Combine both expense and income predefined colors
+    val predefinedColors = categoryColors + incomeCategoryColors
+
+    // If category exists in predefined, return it
+    predefinedColors[category]?.let { return it }
+
+    // Generate a new random color that is not in predefined
+    var newColor: Color
+    do {
+        newColor = generateRandomColor()
+    } while (newColor in predefinedColors.values) // Ensure uniqueness
+
+    return newColor
+}
+
 
 // Declaring a private MutableStateFlow to hold the pie chart data.
 // This is mutable and initialized with an empty list of PieChartData.

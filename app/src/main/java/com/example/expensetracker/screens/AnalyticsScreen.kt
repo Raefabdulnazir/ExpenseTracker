@@ -41,9 +41,12 @@ import java.time.LocalDate
 import java.time.Month
 import java.time.format.DateTimeFormatter
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import com.example.expensetracker.model.Category
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -73,44 +76,48 @@ fun AnalyticsScreen(
             Log.e("AnalyticScreen","Error fetching pie chart data")
         }
     }
-    Column(modifier = Modifier
+    LazyColumn(modifier = Modifier
         .fillMaxSize()
         .padding(16.dp)
     ) {
-        monthSelector(
-            currentMonth = currentMonthForSelector,
-            onPreviousMonth = { currentMonthForSelector = currentMonthForSelector.minusMonths(1) },
-            onNextMonth = { currentMonthForSelector = currentMonthForSelector.plusMonths(1) }
-        )
+        item {
+            monthSelector(
+                currentMonth = currentMonthForSelector,
+                onPreviousMonth = { currentMonthForSelector = currentMonthForSelector.minusMonths(1) },
+                onNextMonth = { currentMonthForSelector = currentMonthForSelector.plusMonths(1) }
+            )
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        OverviewToggle(isExpenseSelected)   {isExpenseSelected = it}//overview toggle for income and expense
-        //this lambda updates the isExpenseSelected when the button is clicked
-        //'it' is the boolean value passed from button click
-        //      true for Expense
-        //      false for Income
+            OverviewToggle(isExpenseSelected)   {isExpenseSelected = it}//overview toggle for income and expense
+            //this lambda updates the isExpenseSelected when the button is clicked
+            //'it' is the boolean value passed from button click
+            //      true for Expense
+            //      false for Income
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         val chartData = if(isExpenseSelected) pieChartData else incomePieChartData
 
-        //piechart
-        if(chartData.isNotEmpty()){
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
-            ){
-                PieChart(chartData)
+        item{
+            //piechart
+            if(chartData.isNotEmpty()){
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ){
+                    PieChart(chartData)
+                }
+            }else{
+                Text(text = "No data ...", style = MaterialTheme.typography.bodyMedium)
             }
-        }else{
-            Text(text = "Loading data ...", style = MaterialTheme.typography.bodyMedium)
         }
 
         //category breakdown
-        chartData.forEach { data ->
+        items(chartData) { data ->
             Row (
                 modifier = Modifier
                     .fillMaxWidth()
@@ -128,10 +135,10 @@ fun AnalyticsScreen(
             }
         }
         
-        Spacer(modifier = Modifier.height(16.dp))
+        item{ Spacer(modifier = Modifier.height(16.dp)) }
 
         //list of categories and its amount and percentage
-        chartData.forEach { data ->
+        items(chartData) { data ->
             val percentage = (data.value/chartData.sumOf { it.value } * 100).toInt()
             Row(
                 modifier = Modifier

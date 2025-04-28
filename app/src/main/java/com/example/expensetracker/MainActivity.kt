@@ -7,7 +7,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -15,9 +14,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.expensetracker.database.ExpenseDatabase
@@ -29,18 +26,21 @@ import com.example.expensetracker.viewmodel.ExpenseViewModel
 import com.example.expensetracker.viewmodel.ExpenseViewModelFactory
 import com.example.expensetracker.viewmodel.IncomeViewModel
 import com.example.expensetracker.viewmodel.IncomeViewModelFactory
-import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavHost
 import com.example.expensetracker.repository.BudgetRepository
+import com.example.expensetracker.repository.CategoryRepository
 import com.example.expensetracker.screens.AnalyticsScreen
 import com.example.expensetracker.screens.BudgetPlannerScreen
+import com.example.expensetracker.screens.CategoryManagementScreen
+import com.example.expensetracker.screens.SettingsScreen
 import com.example.expensetracker.viewmodel.AnalyticsViewModel
 import com.example.expensetracker.viewmodel.AnalyticsViewModelFactory
 import com.example.expensetracker.viewmodel.BudgetViewModel
 import com.example.expensetracker.viewmodel.BudgetViewModelFactory
+import com.example.expensetracker.viewmodel.CategoryViewModel
+import com.example.expensetracker.viewmodel.CategoryViewModelFactory
 import java.util.Calendar
 
 //defining the screens for bottom navigation
@@ -49,6 +49,7 @@ sealed class Screen(val route: String,val title:String){
     object Budget : Screen("budget","Budget")
     object Analysis : Screen("analysis","Analysis")
     object Settings : Screen("settings","Settings")
+    object Category : Screen("category", "Category")
 }
 
 class MainActivity : ComponentActivity() {
@@ -71,6 +72,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var budgetRepository: BudgetRepository
     private lateinit var expenseRepository: ExpenseRepository
     private lateinit var incomeRepository: IncomeRepository
+    private lateinit var categoryRepository: CategoryRepository
     private lateinit var budgetViewModel: BudgetViewModel
     private lateinit var analyticsViewModel: AnalyticsViewModel
 
@@ -83,9 +85,11 @@ class MainActivity : ComponentActivity() {
         try {
             // Initialize dependencies
             expenseDatabase = ExpenseDatabase.getDatabase(applicationContext)
+
             budgetRepository = BudgetRepository(expenseDatabase.budgetDao())
             expenseRepository = ExpenseRepository(expenseDatabase.expenseDao())
             incomeRepository = IncomeRepository(expenseDatabase.incomeDao())
+            categoryRepository = CategoryRepository(expenseDatabase.categoryDao())
 
             // Initialize ViewModel
             budgetViewModel = BudgetViewModel(budgetRepository, expenseRepository)
@@ -93,7 +97,7 @@ class MainActivity : ComponentActivity() {
             // Resolve dependency
             expenseRepository.budgetViewModel = budgetViewModel
 
-            analyticsViewModel = AnalyticsViewModel(expenseRepository,incomeRepository)
+            //analyticsViewModel = AnalyticsViewModel(expenseRepository,incomeRepository,categoryRepository)
 
         } catch (e: Exception) {
             Log.e("MainActivity", "Error during initialization: ${e.message}", e)
@@ -117,7 +121,11 @@ class MainActivity : ComponentActivity() {
                 )
 
                 val analyticsViewModel: AnalyticsViewModel = viewModel(
-                    factory = AnalyticsViewModelFactory(expenseRepository,incomeRepository)
+                    factory = AnalyticsViewModelFactory(expenseRepository,incomeRepository,categoryRepository)
+                )
+
+                val categoryViewModel: CategoryViewModel = viewModel(
+                    factory = CategoryViewModelFactory(categoryRepository,expenseRepository,incomeRepository,budgetRepository)
                 )
 
                 //Set up the navcontroller for the managing screen transitions
@@ -135,6 +143,7 @@ class MainActivity : ComponentActivity() {
                         expenseViewModel = expenseViewModel,
                         budgetViewModel = budgetViewModel,
                         analyticsViewModel = analyticsViewModel,
+                        categoryViewModel = categoryViewModel,
                         modifier = Modifier.padding(paddingValues)
                     )
                 }
@@ -157,6 +166,7 @@ fun BottomNavigationBar(navController: NavHostController){
         Screen.Transaction,
         Screen.Budget,
         Screen.Analysis,
+        Screen.Category,
         Screen.Settings
     )
     NavigationBar {
@@ -194,6 +204,7 @@ fun SetUpNavGraph(
     expenseViewModel: ExpenseViewModel ,
     budgetViewModel: BudgetViewModel ,
     analyticsViewModel: AnalyticsViewModel,
+    categoryViewModel: CategoryViewModel,
     modifier: Modifier = Modifier
 ){
 
@@ -205,10 +216,10 @@ fun SetUpNavGraph(
         modifier = modifier
     ){
         composable(Screen.Transaction.route) {
-            MainScreen(expenseViewModel , incomeViewModel)
+            MainScreen(expenseViewModel , incomeViewModel , categoryViewModel)
         }
         composable(Screen.Budget.route) {
-            BudgetPlannerScreen(budgetViewModel)
+            BudgetPlannerScreen(budgetViewModel , categoryViewModel)
         }
         composable(Screen.Analysis.route) { 
             AnalyticsScreen(
@@ -216,8 +227,14 @@ fun SetUpNavGraph(
                 currentMonth = month
             )
         }
+        composable(Screen.Category.route){
+            CategoryManagementScreen(
+                viewModel = categoryViewModel
+            )
+        }
         composable(Screen.Settings.route) { 
-            Text(text = "Settings Screen")
+            //Text(text = "Settings Screen")
+            SettingsScreen()
         }
     }
 

@@ -70,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import com.example.expensetracker.getCurrentMonth
+import com.example.expensetracker.viewmodel.CategoryViewModel
 import java.time.Instant
 import java.time.LocalDate
 import java.time.Month
@@ -79,7 +80,7 @@ import kotlin.math.exp
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun MainScreen( expenseViewModel: ExpenseViewModel = viewModel(), incomeViewModel: IncomeViewModel = viewModel()){
+fun MainScreen( expenseViewModel: ExpenseViewModel = viewModel(), incomeViewModel: IncomeViewModel = viewModel(),categoryViewModel: CategoryViewModel = viewModel()){
 
     Column(modifier = Modifier
         .fillMaxSize()
@@ -216,6 +217,7 @@ fun MainScreen( expenseViewModel: ExpenseViewModel = viewModel(), incomeViewMode
                     showAddTransactionDialog = false //hide the dialogue after adding the txn
                     editTransaction = null
                 },
+                viewModel = categoryViewModel,
                 transaction = transactionToEdit
             )
         }
@@ -315,6 +317,7 @@ fun AddExpenseIncomeButton(onClick: () -> Unit) {
 fun AddTransactionDialogue(
     onDismiss: () -> Unit,
     onAddTransaction: (String, String, Double) -> Unit,
+    viewModel: CategoryViewModel,
     transaction: Any? = null//Optional parameter to pass the transaction to edit
 ) {
     var transactionType by remember {
@@ -332,12 +335,22 @@ fun AddTransactionDialogue(
     }
 
     //category list for incomes and expenses
+/*
     val incomeCategories = listOf("Salary", "Side-income", "Business", "Rewards", "Others")
     val expenseCategories = listOf("House/Rent", "Healthcare", "Shopping", "Personal Care", "Education", "Food", "Groceries","Entertainment","Transportation","Utilities","Other")
+*/
+
+    val incomeCategories by viewModel.incomeCategories.collectAsState()
+    val expenseCategories by viewModel.expenseCategories.collectAsState()
 
     var selectedCategory by remember {
         mutableStateOf("")
     }
+
+    var showErrorDialog by remember {
+        mutableStateOf(false)
+    }
+
     AlertDialog(
         onDismissRequest = { onDismiss() },
         title = {
@@ -350,18 +363,36 @@ fun AddTransactionDialogue(
             Column {
                 // Transaction type (income or expense)
                 Row {
-                    TextButton(onClick = { transactionType = "Income" }, colors = ButtonDefaults.textButtonColors()) {
+                    TextButton(
+                        onClick = {
+                            transactionType = "Income"
+                            category = "" },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (transactionType == "Income") MaterialTheme.colorScheme.primary else Color.LightGray
+                        )
+                    ) {
                         Text(text = "Income")
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    TextButton(onClick = { transactionType = "Expense" }, colors = ButtonDefaults.textButtonColors()) {
+                    TextButton(
+                        onClick = {
+                            transactionType = "Expense"
+                            category = "" },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (transactionType == "Expense") MaterialTheme.colorScheme.primary else Color.LightGray
+                        )
+                    ) {
                         Text(text = "Expense")
                     }
                 }
 
                 var categories = if (transactionType == "Income") incomeCategories else expenseCategories
 
-                DropDownMenu(items = categories, selectedItem = {category = it}, defaultItem = "Select Category")
+                DropDownMenu(
+                    items = categories.map { it.name }, //extract the category names
+                    selectedItem = {category = it},
+                    defaultItem = "Select Category"
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -380,9 +411,10 @@ fun AddTransactionDialogue(
                 val parsedAmount = amount.toDoubleOrNull() ?: 0.0
                 if (parsedAmount > 0 && category.isNotEmpty()) {
                     onAddTransaction(transactionType, category, parsedAmount)
-                    onDismiss()//dismiss the dialogue raef doubt
+                    onDismiss()
                     Log.d("AddTransaction", "Transaction added: Type=$transactionType, Category=$category, Amount=$parsedAmount")
                 } else {
+                    showErrorDialog = true
                     Log.d("AddTransaction", "Invalid input: Category=$category, Amount=$amount")
                 }
             }) {
@@ -399,6 +431,21 @@ fun AddTransactionDialogue(
             }
         }
     )
+
+// Show error message if category is empty
+    if (showErrorDialog) {
+        AlertDialog(
+            onDismissRequest = { showErrorDialog = false },
+            title = { Text(text = "Invalid Selection") },
+            text = { Text(text = "Please select a valid category before adding the transaction.") },
+            confirmButton = {
+                TextButton(onClick = { showErrorDialog = false }) {
+                    Text(text = "OK")
+                }
+            }
+        )
+    }
+    
 }
 
 @Composable

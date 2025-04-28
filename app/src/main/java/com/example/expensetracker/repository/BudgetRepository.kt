@@ -2,16 +2,17 @@ package com.example.expensetracker.repository
 
 import com.example.expensetracker.dao.BudgetDao
 import com.example.expensetracker.model.Budget
+import kotlinx.coroutines.flow.Flow
 
 class BudgetRepository(private val budgetDao: BudgetDao) {
 
-    suspend fun getAllBudgets(): List<Budget> {
+    fun getAllBudgets(): Flow<List<Budget>> {
         val budgets = budgetDao.getAllBudget()
         android.util.Log.d("BudgetRepository","All budgets : $budgets")
         return budgets
     }
 
-    suspend fun getBudgetByMonth(month: String): List<Budget>{
+    fun getBudgetByMonth(month: String): Flow<List<Budget>> {
         val budgets = budgetDao.getBudgetByMonth(month)
         android.util.Log.d("BudgetRepository","All budgets of $month : $budgets")
         return budgets

@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.expensetracker.model.Budget
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BudgetDao {
@@ -20,10 +21,10 @@ interface BudgetDao {
     suspend fun deleteBudget(budget: Budget)
 
     @Query("SELECT * FROM budget_table")
-    suspend fun getAllBudget():List<Budget>
+    fun getAllBudget(): Flow<List<Budget>>
 
     @Query("SELECT * FROM budget_table WHERE month = :month")
-    suspend fun getBudgetByMonth(month: String):List<Budget>
+    fun getBudgetByMonth(month: String):Flow<List<Budget>>
 
     @Query("SELECT * FROM budget_table WHERE categoryName = :categoryName LIMIT 1")//LIMIT 1 is used to specify that only first result should be returned , even if there are multiple records matching the criteria.
     suspend fun getBudgetByCategory(categoryName: String): Budget?//Budget? means that it could return NULL if no budget exists for the given category name

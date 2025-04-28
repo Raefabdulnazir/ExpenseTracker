@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import com.example.expensetracker.dao.ExpenseDao
 import com.example.expensetracker.model.Expense
 import com.example.expensetracker.viewmodel.BudgetViewModel
+import kotlinx.coroutines.flow.Flow
 import java.time.Month
 
 class ExpenseRepository(
@@ -25,7 +26,7 @@ class ExpenseRepository(
             _budgetViewModel = value
         }
 
-     suspend fun getAllExpenses(): List<Expense> {
+    fun getAllExpenses(): Flow<List<Expense>> {
         val expenses =  expenseDao.getAllExpenses()
         android.util.Log.d("ExpenseRepository","All expenses : $expenses")
         return expenses
@@ -63,6 +64,10 @@ class ExpenseRepository(
         val totalexpenseByCategory = expenseDao.getTotalSpentByCategory(category,month)
         android.util.Log.d("ExpenseRepository","Total Expense of $category : $totalexpenseByCategory")
         return totalexpenseByCategory
+    }
+
+    fun getExpensesByCategory(category: String): Flow<List<Expense>> {
+        return expenseDao.getExpensesByCategory(category)
     }
 
 }

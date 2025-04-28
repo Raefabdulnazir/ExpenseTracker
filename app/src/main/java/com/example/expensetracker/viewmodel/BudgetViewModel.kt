@@ -10,35 +10,45 @@ import com.example.expensetracker.repository.ExpenseRepository
 import kotlinx.coroutines.launch
 import java.time.Month
 import android.util.Log//Import Log class
+import androidx.lifecycle.asLiveData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.lifecycle.liveData
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 
 class BudgetViewModel(
     private val repository: BudgetRepository,
     private val expenseRepository : ExpenseRepository   //I added expenserepository for dynamically updating categorySpent of the category
 ): ViewModel() {
 
-    private val _allBudgets = MutableLiveData<List<Budget>>()
-    val allBudgets: LiveData<List<Budget>> = _allBudgets
+/*    private val _allBudgets = MutableLiveData<List<Budget>>()
+    val allBudgets: LiveData<List<Budget>> = _allBudgets*/
 
-    init {
+    private val _allBudgets = repository.getAllBudgets()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allBudgets: StateFlow<List<Budget>> = _allBudgets
+
+    /*init {
         fetchAllBudgets()
-    }
+    }*/
 
-    private fun fetchAllBudgets() {
+    /*private fun fetchAllBudgets() {
         viewModelScope.launch {
             val budgets = repository.getAllBudgets()
             _allBudgets.postValue(budgets)
             Log.d("BudgetViewModel", "Fetched All Budgets: $budgets")
         }
-    }
+    }*/
 
     fun insert(budget: Budget) {
         viewModelScope.launch {
             android.util.Log.d("BudgetViewModel", "Inserting Budget : $budget")
             repository.insert(budget)
-            fetchAllBudgets()//Refreshing the list after the insertion
+            //fetchAllBudgets()//Refreshing the list after the insertion
         }
     }
 
@@ -46,7 +56,7 @@ class BudgetViewModel(
         viewModelScope.launch {
             android.util.Log.d("BudgetViewModel", "Deleting Budget : $budget")
             repository.delete(budget)
-            fetchAllBudgets()
+            //fetchAllBudgets()
         }
     }
 
@@ -54,57 +64,36 @@ class BudgetViewModel(
         viewModelScope.launch {
             android.util.Log.d("BudgetViewModel", "Updating Budget : $budget")
             repository.update(budget)
-            fetchAllBudgets()
+            //fetchAllBudgets()
         }
     }
 
     fun getBudgetByMonth(month: String): LiveData<List<Budget>> {
-        val budgetByMonth = MutableLiveData<List<Budget>>()
-        viewModelScope.launch {
-            val budgets = repository.getBudgetByMonth(month)
-            budgetByMonth.value = budgets//set the result in Livedata
-            android.util.Log.d("BudgetViewModel", "All Budgets of month $month : $budgetByMonth")
-        }
-        return budgetByMonth
+        return repository.getBudgetByMonth(month).asLiveData()
     }
 
-    fun saveOrUpdateBudget(budget: Budget) {     //this function is called when creating a new budget alert
+    fun saveOrUpdateBudget(budget: Budget) {
         viewModelScope.launch {
             Log.d("BudgetViewModel", "Saving or Updating Budget: $budget")
-            val existingBudgets = repository.getBudgetByMonth(budget.month)
+            val existingBudgets = repository.getBudgetByMonth(budget.month).first()
             val existingBudget = existingBudgets.find { it.categoryName == budget.categoryName }
 
             if (existingBudget != null) {
-                Log.d("BudgetViewModel", "Existing Budget Found: $existingBudget")
-                //budget does exist , so update
                 repository.update(budget)
-                fetchAllBudgets()
-                Log.d("BudgetViewModel", "Updated Budget: $budget")
             } else {
-                Log.d("BudgetViewModel", "No Existing Budget Found, Inserting New Budget: $budget")
-                //budget does not exist , so inserting
                 repository.insert(budget)
-                fetchAllBudgets()
-                Log.d("BudgetViewModel", "Inserted New Budget: $budget")
             }
-            Log.d("BudgetViewModel", "Updated All Budgets LiveData: ${_allBudgets.value}")
         }
     }
 
     // Call this function after each transaction add, update, or delete
-    fun updateSpentForCategory(categoryName: String,month: String) {
+    fun updateSpentForCategory(categoryName: String, month: String) {
         viewModelScope.launch {
-            // Fetch the total spent for the category directly
-            val totalSpent = expenseRepository.getTotalSpentByCategory(categoryName,month) ?: 0.0
+            val totalSpent = expenseRepository.getTotalSpentByCategory(categoryName, month) ?: 0.0
             val budget = repository.getBudgetByCategory(categoryName)
-
             if (budget != null) {
-                // Update the categorySpent field
                 budget.categorySpent = totalSpent
                 repository.update(budget)
-
-                // Refresh the list of all budgets after update
-                fetchAllBudgets()
             }
         }
     }

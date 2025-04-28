@@ -1,11 +1,13 @@
 package com.example.expensetracker.repository
 
 import com.example.expensetracker.dao.IncomeDao
+import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.Income
+import kotlinx.coroutines.flow.Flow
 
 class IncomeRepository(private val incomeDao: IncomeDao) {
 
-    suspend fun getAllIncomes(): List<Income>{
+    fun getAllIncomes(): Flow<List<Income>> {
         val incomes =  incomeDao.getAllIncomes()
         android.util.Log.d("IncomeRepository", "Fetched Incomes : $incomes")
         return incomes
@@ -30,6 +32,10 @@ class IncomeRepository(private val incomeDao: IncomeDao) {
         val totalIncomeByCategory = incomeDao.getTotalIncomeByCategory(category,month)
         android.util.Log.d("IncomeRepository","Total Income of $category : $totalIncomeByCategory")
         return totalIncomeByCategory
+    }
+
+    fun getIncomesByCategory(category: String): Flow<List<Income>> {
+        return incomeDao.getIncomesByCategory(category)
     }
 
 }

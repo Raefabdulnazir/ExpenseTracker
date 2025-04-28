@@ -47,11 +47,16 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.runtime.collectAsState
 import com.example.expensetracker.getCurrentMonth
+import com.example.expensetracker.viewmodel.CategoryViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun BudgetPlannerScreen(budgetViewModel: BudgetViewModel = viewModel()){
+fun BudgetPlannerScreen(
+    budgetViewModel: BudgetViewModel = viewModel(),
+    categoryViewModel: CategoryViewModel = viewModel()
+){
 
     var showBudgetDialog by remember { mutableStateOf(false) }
     var selectedBudget by remember { mutableStateOf<Budget?>(null) }
@@ -69,10 +74,13 @@ fun BudgetPlannerScreen(budgetViewModel: BudgetViewModel = viewModel()){
             mutableStateOf(LocalDate.now())
         }
         // Observe budgets and total spending dynamically
-        val allBudgets by budgetViewModel.allBudgets.observeAsState(emptyList())
+        val allBudgets by budgetViewModel.allBudgets.collectAsState(initial = emptyList())
+
         val budgets = allBudgets.filterByMonthYear(currentMonth)
         Log.d("UI-Budgets", "Current budgets in UI: $budgets")
 
+        //val incomeCategories by categoryViewModel.incomeCategories.collectAsState()
+        val expenseCategories by categoryViewModel.expenseCategories.collectAsState()
 
         monthSelector(
             currentMonth = currentMonth,
@@ -163,21 +171,9 @@ fun BudgetPlannerScreen(budgetViewModel: BudgetViewModel = viewModel()){
                 )
             }
 
-            //predefined categories for the budget
-            val predefinedCategories = listOf(
-                "House/Rent",
-                "Healthcare",
-                "Shopping",
-                "Personal Care",
-                "Education",
-                "Food",
-                "Groceries",
-                "Entertainment",
-                "Transportation",
-                "Utilities",
-                "Other"
-            )
-            val nonBudgetedCategories = predefinedCategories.filter { category ->
+            var expenseCategoryNames = expenseCategories.map { it.name }
+
+            val nonBudgetedCategories = expenseCategoryNames.filter { category ->
                 budgets.none { it.categoryName == category }
             }
 

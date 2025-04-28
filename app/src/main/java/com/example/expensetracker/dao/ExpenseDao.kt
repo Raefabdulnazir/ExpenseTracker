@@ -8,6 +8,7 @@ import androidx.room.Query
 import androidx.room.Delete
 import androidx.room.Update
 import com.example.expensetracker.model.Expense
+import kotlinx.coroutines.flow.Flow
 import java.time.Month
 
 @Dao
@@ -16,7 +17,10 @@ interface ExpenseDao {
     suspend fun insertExpense(expense: Expense)
 
     @Query("SELECT * FROM expense_table ORDER BY date DESC")
-    suspend fun getAllExpenses(): List<Expense>
+    fun getAllExpenses(): Flow<List<Expense>>
+
+    @Query("SELECT * FROM expense_table WHERE category = :category")
+    fun getExpensesByCategory(category: String): Flow<List<Expense>>
 
     @Delete
     suspend fun deleteExpense(expense: Expense)
