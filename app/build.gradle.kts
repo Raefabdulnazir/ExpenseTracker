@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.expensetracker"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -77,7 +77,7 @@ dependencies {
     implementation("androidx.compose.material3:material3:1.0.1") // Or latest version
     implementation("androidx.compose.ui:ui-tooling-preview:1.5.0")  // For preview support
 
-    implementation("androidx.compose.runtime:runtime-livedata:$1.7.1")
+    implementation("androidx.compose.runtime:runtime-livedata:1.7.1")
 
     val room_version = "2.6.1"
 
@@ -114,5 +114,9 @@ dependencies {
 
     val live_version = "2.8.7"
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:$live_version")
+
+    //For notification
+    val work_version = "2.9.0"
+    implementation("androidx.work:work-runtime-ktx:$work_version")
 
 }

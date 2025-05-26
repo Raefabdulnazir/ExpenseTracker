@@ -5,28 +5,40 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -34,246 +46,263 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.expensetracker.getCurrentMonth
 import com.example.expensetracker.model.Budget
 import com.example.expensetracker.viewmodel.BudgetViewModel
-import org.w3c.dom.Text
-import java.lang.reflect.Modifier
-import java.time.LocalDate
-import android.util.Log
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.Divider
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.runtime.collectAsState
-import com.example.expensetracker.getCurrentMonth
 import com.example.expensetracker.viewmodel.CategoryViewModel
+import java.time.LocalDate
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun BudgetPlannerScreen(
     budgetViewModel: BudgetViewModel = viewModel(),
     categoryViewModel: CategoryViewModel = viewModel()
-){
-
+) {
+    var currentMonth by remember { mutableStateOf(LocalDate.now()) }
     var showBudgetDialog by remember { mutableStateOf(false) }
     var selectedBudget by remember { mutableStateOf<Budget?>(null) }
-    var showEditBudgetDialogue by remember { mutableStateOf(false) } // Added for edit dialog
+    var showEditBudgetDialog by remember { mutableStateOf(false) }
 
+    // Observe data
+    val allBudgets by budgetViewModel.allBudgets.collectAsState(initial = emptyList())
+    val expenseCategories by categoryViewModel.expenseCategories.collectAsState()
 
-    Column(modifier = androidx.compose.ui.Modifier
-        .fillMaxSize()
-        .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally)
-    {
+    val budgets = allBudgets.filterByMonthYear(currentMonth)
+    val totalBudget = calculateTotalBudget(budgets)
+    val totalSpent = calculateTotalSpent(budgets)
 
-        var currentMonth by remember {
-            mutableStateOf(LocalDate.now())
-        }
-        // Observe budgets and total spending dynamically
-        val allBudgets by budgetViewModel.allBudgets.collectAsState(initial = emptyList())
-
-        val budgets = allBudgets.filterByMonthYear(currentMonth)
-        Log.d("UI-Budgets", "Current budgets in UI: $budgets")
-
-        //val incomeCategories by categoryViewModel.incomeCategories.collectAsState()
-        val expenseCategories by categoryViewModel.expenseCategories.collectAsState()
-
-        monthSelector(
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // Month Selector
+        MonthSelector(
             currentMonth = currentMonth,
             onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
             onNextMonth = { currentMonth = currentMonth.plusMonths(1) }
         )
 
-        val totalBudget = calculateTotalBudget(budgets)
-        val totalSpent = calculateTotalSpent(budgets)
+        Spacer(modifier = Modifier.height(16.dp))
 
-        //one row for income box and expense box
-        Row(
-            modifier = androidx.compose.ui.Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly //to spread evenly
-        ) {
-            SummaryCard(
-                title = "Total Limit",
-                amount = totalBudget,
-                backgroundColor = Color(0xFF8BC34A), // Light Green
-                modifier = androidx.compose.ui.Modifier.weight(1f)// Occupy half of the width)
-            )
-            SummaryCard(
-                title = "Total Spent",
-                amount = totalSpent,
-                backgroundColor = Color(0xFFFFCDD2),// Light Red
-                modifier = androidx.compose.ui.Modifier.weight(1f)//Occupy half of the width
-            )
-        }
+        // Budget Summary Section
+        BudgetSummarySection(
+            totalBudget = totalBudget,
+            totalSpent = totalSpent
+        )
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Budget Content
         LazyColumn(
-            modifier = androidx.compose.ui.Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp)
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            //budgeted categories
-            item {
-                Text(
-                    text = "Budgeted categories",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = androidx.compose.ui.Modifier.padding(bottom = 8.dp)
-                )
-            }
-
-            if (budgets.isEmpty()) {
+            // Budgeted Categories Section
+            if (budgets.isNotEmpty()) {
                 item {
-                    Text(
-                        text = "There's no budget set for this month yet. You can add your budget limits for this month or copy them from previous months",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = FontWeight.Light,
-                            textAlign = TextAlign.Center,
-                            fontSize = 16.sp
-                        ),
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = androidx.compose.ui.Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp)
-                    )
+                    SectionHeaderBudget(title = "Budgeted Categories")
                 }
-            } else {
+
                 items(budgets.size) { index ->
                     val budget = budgets[index]
-                    BudgetItem(
+                    MinimalisticBudgetCard(
                         budget = budget,
-                        onSetBudgetClick = {
-                            selectedBudget = budget
-                            showBudgetDialog = true
-                        },
                         onEditBudget = {
-                        selectedBudget = budget
-                        showEditBudgetDialogue = true
-                    },
+                            selectedBudget = budget
+                            showEditBudgetDialog = true
+                        },
                         onDeleteBudget = {
                             budgetViewModel.delete(budget)
                         },
-                        budgetViewModel
+                        budgetViewModel = budgetViewModel
                     )
                 }
             }
 
-            //non budgeted categories
-            item {
-                Text(
-                    text = "Non Budgeted categories",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = androidx.compose.ui.Modifier.padding(top = 16.dp, bottom = 8.dp)
-                )
-            }
-
-            var expenseCategoryNames = expenseCategories.map { it.name }
-
+            // Non-budgeted Categories Section
+            val expenseCategoryNames = expenseCategories.map { it.name }
             val nonBudgetedCategories = expenseCategoryNames.filter { category ->
                 budgets.none { it.categoryName == category }
             }
 
-            items(nonBudgetedCategories.size) { index ->// items() expects an Int for the size of the list
-                val category = nonBudgetedCategories[index]// Get the budget object from the list
-                val month = getCurrentMonth()
-                //val budget = budgets.find { it.categoryName == category } ?: Budget(categoryName = category, categoryBudget = 0.0, categorySpent = 0.0, month = currentMonth.toString())
-                val initialSpent by budgetViewModel.fetchInitialSpent(category,month).observeAsState(0.0)
-                Row(
-                    modifier = androidx.compose.ui.Modifier
-                        .padding(8.dp)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween    //Align a row and button in a row
-                ) {
-                    Text(
-                        text = category,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontSize = 16.sp
+            if (nonBudgetedCategories.isNotEmpty()) {
+                item {
+                    SectionHeaderBudget(title = "Available Categories")
+                }
+
+                items(nonBudgetedCategories.size) { index ->
+                    val category = nonBudgetedCategories[index]
+                    val month = getCurrentMonth()
+                    val initialSpent by budgetViewModel.fetchInitialSpent(category, month).observeAsState(0.0)
+
+                    NonBudgetedCategoryCard(
+                        categoryName = category,
+                        onSetBudget = {
+                            selectedBudget = Budget(
+                                categoryName = category,
+                                categoryBudget = 0.0,
+                                categorySpent = initialSpent,
+                                month = month
+                            )
+                            showBudgetDialog = true
+                        }
                     )
-                    Button(onClick = {
-                        //val initialSpent = budgetViewModel.getTotalSpentForCategory(category) ?: 0.0// Use 0.0 if null
-                        selectedBudget = Budget(
-                            categoryName = category,
-                            categoryBudget = 0.0,
-                            categorySpent = initialSpent,
-                            month = month/*currentMonth.toString()*/    //now in YYYY-MM
-                        )
-                        showBudgetDialog = true
-                    }) {
-                        Text("Set BUDGET")
-                    }
+                }
+            }
+
+            // Empty State
+            if (budgets.isEmpty() && nonBudgetedCategories.isEmpty()) {
+                item {
+                    EmptyBudgetState()
                 }
             }
         }
     }
 
-            //display the dialogue when the state is set to true
-            if (showBudgetDialog && selectedBudget != null) {
-                setBudgetDialogue(
-                    budget = selectedBudget!!,
-                    onDismissRequest = { showBudgetDialog = false },
-                    onBudgetSet = { newBudgetLimit ->
-                        budgetViewModel.saveOrUpdateBudget(selectedBudget!!.copy(categoryBudget = newBudgetLimit))
-                        showBudgetDialog = false
-                    }
-                )
+    // Dialogs
+    if (showBudgetDialog && selectedBudget != null) {
+        SetBudgetDialog(
+            budget = selectedBudget!!,
+            onDismiss = { showBudgetDialog = false },
+            onBudgetSet = { newBudgetLimit ->
+                budgetViewModel.saveOrUpdateBudget(selectedBudget!!.copy(categoryBudget = newBudgetLimit))
+                showBudgetDialog = false
             }
-
-
-        if (showEditBudgetDialogue && selectedBudget != null) {
-            setEditBudgetDialogue(
-                budget = selectedBudget!!,
-                onDismissRequest = { showEditBudgetDialogue = false },
-                onBudgetUpdated = { updatedBudget ->
-                    budgetViewModel.saveOrUpdateBudget(updatedBudget)
-                    showEditBudgetDialogue = false
-                }
-            )
-        }
+        )
     }
+
+    if (showEditBudgetDialog && selectedBudget != null) {
+        EditBudgetDialog(
+            budget = selectedBudget!!,
+            onDismiss = { showEditBudgetDialog = false },
+            onBudgetUpdated = { updatedBudget ->
+                budgetViewModel.saveOrUpdateBudget(updatedBudget)
+                showEditBudgetDialog = false
+            }
+        )
+    }
+}
 
 @Composable
-fun BudgetItem(budget: Budget,onSetBudgetClick:() -> Unit,onEditBudget:() -> Unit,onDeleteBudget:() -> Unit,budgetViewModel : BudgetViewModel){
-
-    var menuExpanded by remember {
-        mutableStateOf(false)
-    }
-
-    // Observing the spent amount for the category and month
-    val categorySpent by budgetViewModel.getSpentForCategory(budget.categoryName, budget.month).observeAsState(0.0)
-    Log.d("BudgetItem", "Category: ${budget.categoryName}, Spent: $categorySpent") //test code
+private fun BudgetSummarySection(
+    totalBudget: Double,
+    totalSpent: Double
+) {
     Card(
-        modifier = androidx.compose.ui.Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = RoundedCornerShape(12.dp)
     ) {
         Column(
-            modifier = androidx.compose.ui.Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(16.dp)
         ) {
             Row(
-                modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = "Total Budget",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = "$${"%.2f".format(totalBudget)}",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "Total Spent",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = "$${"%.2f".format(totalSpent)}",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (totalSpent > totalBudget) Color.Red else Color.Green
+                    )
+                }
+            }
+
+            if (totalBudget > 0) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                val progress = (totalSpent / totalBudget).coerceIn(0.0, 1.0).toFloat()
+
+                LinearProgressIndicator(
+                    progress = progress,
+                    modifier = Modifier.fillMaxWidth(),
+                    color = if (progress > 0.8f) Color.Red else MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "Remaining: $${"%.2f".format((totalBudget - totalSpent).coerceAtLeast(0.0))}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MinimalisticBudgetCard(
+    budget: Budget,
+    onEditBudget: () -> Unit,
+    onDeleteBudget: () -> Unit,
+    budgetViewModel: BudgetViewModel
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    val categorySpent by budgetViewModel.getSpentForCategory(budget.categoryName, budget.month).observeAsState(0.0)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
-            ){
+            ) {
                 Text(
                     text = budget.categoryName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
                 )
-                IconButton(onClick = { menuExpanded = !menuExpanded }) {
-                    Icon(imageVector = Icons.Default.MoreVert, contentDescription = "More options")
+
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "More options"
+                    )
                 }
-                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
                     DropdownMenuItem(
-                        text = { Text("Change Limit") },
+                        text = { Text("Edit Limit") },
                         onClick = {
                             onEditBudget()
                             menuExpanded = false
@@ -282,76 +311,165 @@ fun BudgetItem(budget: Budget,onSetBudgetClick:() -> Unit,onEditBudget:() -> Uni
                     DropdownMenuItem(
                         text = { Text("Delete Budget") },
                         onClick = {
-                        onDeleteBudget()
-                        menuExpanded = false
+                            onDeleteBudget()
+                            menuExpanded = false
                         }
                     )
                 }
             }
 
-            //val totalSpentForCategory by budgetViewModel.getTotalSpentForCategory(budget.categoryName).observeAsState(0.0)
-            //val budget.categorySpent = totalSpentForCategory
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "$${"%.2f".format(categorySpent)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+                Text(
+                    text = "of $${"%.2f".format(budget.categoryBudget)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+            }
 
-            //Text(text = budget.categoryName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold,)
-            Text(text = "Limit : ${budget.categoryBudget}", style = MaterialTheme.typography.bodySmall)
-            Text(text = "Spent : $categorySpent", style = MaterialTheme.typography.bodySmall)
-            Text(text = "Remaining : ${budget.categoryBudget - budget.categorySpent}", style = MaterialTheme.typography.bodySmall)
-            Slider(
-                value = (budget.categorySpent/budget.categoryBudget).toFloat(),
-                onValueChange = {},
-                valueRange = 0f..1f,
-                modifier = androidx.compose.ui.Modifier.fillMaxWidth()
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val progress = if (budget.categoryBudget > 0) {
+                (categorySpent / budget.categoryBudget).coerceIn(0.0, 1.0).toFloat()
+            } else 0f
+
+            LinearProgressIndicator(
+                progress = progress,
+                modifier = Modifier.fillMaxWidth(),
+                color = when {
+                    progress >= 1.0f -> Color.Red
+                    progress >= 0.8f -> Color(0xFFFF9800) // Orange
+                    else -> Color.Green
+                }
             )
-
         }
-        Divider(
-            color = Color.Gray.copy(alpha = 0.5f),
-            thickness = 1.dp,
-            modifier = androidx.compose.ui.Modifier.padding(top = 8.dp)
+    }
+}
+
+@Composable
+private fun NonBudgetedCategoryCard(
+    categoryName: String,
+    onSetBudget: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = categoryName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "No budget set",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+
+            Button(
+                onClick = onSetBudget,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                ),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null
+                )
+                Text("Set Budget")
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyBudgetState() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "No Budget Categories",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Create expense categories first, then set budget limits for them",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray,
+            textAlign = TextAlign.Center
         )
     }
 }
 
-fun calculateTotalBudget(budgets:List<Budget>): Double {
-    return budgets.sumOf { it.categoryBudget }
-}
-
-fun calculateTotalSpent(budgets:List<Budget>): Double {
-    return budgets.sumOf { it.categorySpent }
+@Composable
+private fun SectionHeaderBudget(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(vertical = 8.dp)
+    )
 }
 
 @Composable
-fun setBudgetDialogue(
+private fun SetBudgetDialog(
     budget: Budget,
-    onDismissRequest: () -> Unit,
+    onDismiss: () -> Unit,
     onBudgetSet: (Double) -> Unit
-){
-    var budgetLimit by remember {
-        mutableStateOf(budget.categoryBudget.toString())
-    }
+) {
+    var budgetLimit by remember { mutableStateOf(budget.categoryBudget.toString()) }
 
     AlertDialog(
-        onDismissRequest = { onDismissRequest() },
+        onDismissRequest = onDismiss,
         title = {
-            Text(text = "Set BUDGET", style = MaterialTheme.typography.titleLarge)
+            Text(
+                text = "Set Budget",
+                fontWeight = FontWeight.Bold
+            )
         },
         text = {
             Column(
-                modifier = androidx.compose.ui.Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(text = "Category: ${budget.categoryName}", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = "Category: ${budget.categoryName}",
+                    style = MaterialTheme.typography.bodyLarge
+                )
 
-                //Budget Limit Field
                 OutlinedTextField(
                     value = budgetLimit,
-                    onValueChange = {budgetLimit = it},
-                    label = {Text("Limit")},
-                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                    modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                    onValueChange = { budgetLimit = it },
+                    label = { Text("Budget Limit") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
                     singleLine = true
                 )
             }
@@ -359,64 +477,78 @@ fun setBudgetDialogue(
         confirmButton = {
             Button(onClick = {
                 val newBudgetLimit = budgetLimit.toDoubleOrNull()
-                if (newBudgetLimit != null){
+                if (newBudgetLimit != null && newBudgetLimit > 0) {
                     onBudgetSet(newBudgetLimit)
-                    }
-                onDismissRequest()
                 }
-            ) {
-                Text("Set")
+            }) {
+                Text("Set Budget")
             }
         },
         dismissButton = {
-            Button(onClick = onDismissRequest) {
+            TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        }
+        },
+        shape = RoundedCornerShape(16.dp)
     )
 }
 
-fun List<Budget>.filterByMonthYear(monthYear: LocalDate): List<Budget> {
-    val selectedMonthYear = monthYear.toString().substring(0, 7)  // Format to "YYYY-MM"
-    return this.filter { budget -> budget.month.startsWith(selectedMonthYear) }
-}
-
 @Composable
-fun setEditBudgetDialogue(  //need to refer again
+private fun EditBudgetDialog(
     budget: Budget,
-    onDismissRequest: () -> Unit,
+    onDismiss: () -> Unit,
     onBudgetUpdated: (Budget) -> Unit
 ) {
     var updatedLimit by remember { mutableStateOf(budget.categoryBudget.toString()) }
 
     AlertDialog(
-        onDismissRequest = { onDismissRequest() },
-        title = { Text("Edit Budget Limit") },
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Edit Budget Limit",
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             OutlinedTextField(
                 value = updatedLimit,
                 onValueChange = { updatedLimit = it },
-                label = { Text("New Limit") },
-                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                label = { Text("New Budget Limit") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
                 singleLine = true
             )
         },
         confirmButton = {
             Button(onClick = {
                 val newLimit = updatedLimit.toDoubleOrNull()
-                if (newLimit != null) {
+                if (newLimit != null && newLimit > 0) {
                     onBudgetUpdated(budget.copy(categoryBudget = newLimit))
                 }
-                onDismissRequest()
             }) {
                 Text("Update")
             }
         },
         dismissButton = {
-            Button(onClick = onDismissRequest) {
+            TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        }
+        },
+        shape = RoundedCornerShape(16.dp)
     )
+}
+
+// Helper functions remain the same
+fun calculateTotalBudget(budgets: List<Budget>): Double {
+    return budgets.sumOf { it.categoryBudget }
+}
+
+fun calculateTotalSpent(budgets: List<Budget>): Double {
+    return budgets.sumOf { it.categorySpent }
+}
+
+fun List<Budget>.filterByMonthYear(monthYear: LocalDate): List<Budget> {
+    val selectedMonthYear = monthYear.toString().substring(0, 7)
+    return this.filter { budget -> budget.month.startsWith(selectedMonthYear) }
 }
