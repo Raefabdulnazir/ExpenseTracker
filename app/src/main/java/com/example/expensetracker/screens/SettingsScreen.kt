@@ -1,50 +1,31 @@
 package com.example.expensetracker.screens
 
-import android.content.Context
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.expensetracker.utils.SettingsManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    //onBackClick: () -> Unit
+    settingsManager: SettingsManager
 ) {
+    // Observe settings from SettingsManager using StateFlow
+    val isDarkMode by settingsManager.isDarkMode.collectAsState()
+    val selectedCurrencyCode by settingsManager.currencyCode.collectAsState()
+    val currencySymbol by settingsManager.currencySymbol.collectAsState()
+    val notificationsEnabled by settingsManager.notificationsEnabled.collectAsState()
 
-    val context = LocalContext.current  //way to access android system features
-    val sharedPrefs = remember {
-        context.getSharedPreferences("app_settings", Context.MODE_PRIVATE)  //creates/opens a storage file named "app_settings" in private mode(means only our app can use this file)
-    }
-
-    // State variables for settings - initialize from SharedPreferences
-    var isDarkMode by remember { mutableStateOf(sharedPrefs.getBoolean("dark_mode",false)) }
-    var selectedCurrency by remember { mutableStateOf(sharedPrefs.getString("currency","$")?: "$") }
-    var notificationsEnabled by remember { mutableStateOf(sharedPrefs.getBoolean("notifications",true)) }
     var showCurrencyDialog by remember { mutableStateOf(false) }
-
-    // Available currencies
-    val currencies = listOf("$", "€", "£", "¥", "₹", "₽", "₩", "₨")
-
-    //Function to save settings
-    fun saveSettings(){
-        with(sharedPrefs.edit()) {
-            putBoolean("dark_mode",isDarkMode)
-            putString("currency",selectedCurrency)
-            putBoolean("notifications",notificationsEnabled)
-            apply() //Use apply() for async save, commit() for sync save
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -60,14 +41,6 @@ fun SettingsScreen(
                     fontWeight = FontWeight.Bold
                 )
             },
-/*            navigationIcon = {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back"
-                    )
-                }
-            },*/
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.surface
             )
@@ -90,9 +63,8 @@ fun SettingsScreen(
             ) {
                 Switch(
                     checked = isDarkMode,
-                    onCheckedChange = {
-                        isDarkMode = it
-                        saveSettings()
+                    onCheckedChange = { newValue ->
+                        settingsManager.updateTheme(newValue)
                     }
                 )
             }
@@ -102,7 +74,7 @@ fun SettingsScreen(
             // Currency Preference
             SettingsRow(
                 title = "Currency",
-                subtitle = "Selected: $selectedCurrency"
+                subtitle = "$currencySymbol - ${settingsManager.getCurrencyDisplayName(selectedCurrencyCode).substring(6)}"
             ) {
                 TextButton(
                     onClick = { showCurrencyDialog = true }
@@ -124,9 +96,8 @@ fun SettingsScreen(
             ) {
                 Switch(
                     checked = notificationsEnabled,
-                    onCheckedChange = {
-                        notificationsEnabled = it
-                        saveSettings()
+                    onCheckedChange = { newValue ->
+                        settingsManager.updateNotifications(newValue)
                     }
                 )
             }
@@ -160,11 +131,11 @@ fun SettingsScreen(
     // Currency Selection Dialog
     if (showCurrencyDialog) {
         CurrencySelectionDialog(
-            currencies = currencies,
-            selectedCurrency = selectedCurrency,
-            onCurrencySelected = { currency ->
-                selectedCurrency = currency
-                saveSettings() // Save when currency is selected
+            currencies = settingsManager.getAvailableCurrencies(),
+            selectedCurrencyCode = selectedCurrencyCode,
+            onCurrencySelected = { currencyDisplay ->
+                val newCurrencyCode = settingsManager.extractCurrencyCode(currencyDisplay)
+                settingsManager.updateCurrency(newCurrencyCode)
                 showCurrencyDialog = false
             },
             onDismiss = { showCurrencyDialog = false }
@@ -228,7 +199,7 @@ fun SettingsRow(
 @Composable
 fun CurrencySelectionDialog(
     currencies: List<String>,
-    selectedCurrency: String,
+    selectedCurrencyCode: String,
     onCurrencySelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -236,16 +207,22 @@ fun CurrencySelectionDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = "Select Currency") },
         text = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .height(400.dp) // Set a fixed height for the dialog content
+                    .verticalScroll(rememberScrollState()) // Make it scrollable
+            ) {
                 currencies.forEach { currency ->
+                    val currencyCode = currency.substring(0, 3)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 8.dp)
+                            .clickable { onCurrencySelected(currency) }, // Make entire row clickable
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
-                            selected = currency == selectedCurrency,
+                            selected = currencyCode == selectedCurrencyCode,
                             onClick = { onCurrencySelected(currency) }
                         )
                         Spacer(modifier = Modifier.width(8.dp))

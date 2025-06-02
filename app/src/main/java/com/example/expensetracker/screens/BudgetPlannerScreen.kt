@@ -46,8 +46,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.expensetracker.formatAmount
 import com.example.expensetracker.getCurrentMonth
 import com.example.expensetracker.model.Budget
+import com.example.expensetracker.utils.SettingsManager
 import com.example.expensetracker.viewmodel.BudgetViewModel
 import com.example.expensetracker.viewmodel.CategoryViewModel
 import java.time.LocalDate
@@ -56,12 +58,17 @@ import java.time.LocalDate
 @Composable
 fun BudgetPlannerScreen(
     budgetViewModel: BudgetViewModel = viewModel(),
-    categoryViewModel: CategoryViewModel = viewModel()
+    categoryViewModel: CategoryViewModel = viewModel(),
+    settingsManager: SettingsManager
 ) {
     var currentMonth by remember { mutableStateOf(LocalDate.now()) }
     var showBudgetDialog by remember { mutableStateOf(false) }
     var selectedBudget by remember { mutableStateOf<Budget?>(null) }
     var showEditBudgetDialog by remember { mutableStateOf(false) }
+
+    // Observe settings from SettingsManager
+    val currencySymbol by settingsManager.currencySymbol.collectAsState()
+    val currencyCode by settingsManager.currencyCode.collectAsState()
 
     // Observe data
     val allBudgets by budgetViewModel.allBudgets.collectAsState(initial = emptyList())
@@ -88,7 +95,8 @@ fun BudgetPlannerScreen(
         // Budget Summary Section
         BudgetSummarySection(
             totalBudget = totalBudget,
-            totalSpent = totalSpent
+            totalSpent = totalSpent,
+            currencySymbol = currencySymbol
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -115,7 +123,8 @@ fun BudgetPlannerScreen(
                         onDeleteBudget = {
                             budgetViewModel.delete(budget)
                         },
-                        budgetViewModel = budgetViewModel
+                        budgetViewModel = budgetViewModel,
+                        currencySymbol = currencySymbol
                     )
                 }
             }
@@ -187,7 +196,8 @@ fun BudgetPlannerScreen(
 @Composable
 private fun BudgetSummarySection(
     totalBudget: Double,
-    totalSpent: Double
+    totalSpent: Double,
+    currencySymbol: String
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -211,7 +221,7 @@ private fun BudgetSummarySection(
                         color = Color.Gray
                     )
                     Text(
-                        text = "$${"%.2f".format(totalBudget)}",
+                        text = "$currencySymbol${totalBudget.formatAmount()}",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -225,7 +235,7 @@ private fun BudgetSummarySection(
                         color = Color.Gray
                     )
                     Text(
-                        text = "$${"%.2f".format(totalSpent)}",
+                        text = "$currencySymbol${totalSpent.formatAmount()}",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = if (totalSpent > totalBudget) Color.Red else Color.Green
@@ -247,7 +257,7 @@ private fun BudgetSummarySection(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "Remaining: $${"%.2f".format((totalBudget - totalSpent).coerceAtLeast(0.0))}",
+                    text = "Remaining: $currencySymbol${((totalBudget - totalSpent).coerceAtLeast(0.0)).formatAmount()}",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray,
                     textAlign = TextAlign.Center,
@@ -263,7 +273,8 @@ private fun MinimalisticBudgetCard(
     budget: Budget,
     onEditBudget: () -> Unit,
     onDeleteBudget: () -> Unit,
-    budgetViewModel: BudgetViewModel
+    budgetViewModel: BudgetViewModel,
+    currencySymbol: String
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     val categorySpent by budgetViewModel.getSpentForCategory(budget.categoryName, budget.month).observeAsState(0.0)
@@ -323,12 +334,12 @@ private fun MinimalisticBudgetCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "$${"%.2f".format(categorySpent)}",
+                    text = "$currencySymbol${"%.2f".format(categorySpent)}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.Gray
                 )
                 Text(
-                    text = "of $${"%.2f".format(budget.categoryBudget)}",
+                    text = "of $currencySymbol${(budget.categoryBudget).formatAmount()}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.Gray
                 )
@@ -445,6 +456,7 @@ private fun SetBudgetDialog(
     onBudgetSet: (Double) -> Unit
 ) {
     var budgetLimit by remember { mutableStateOf(budget.categoryBudget.toString()) }
+    //var budgetLimit by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -467,6 +479,7 @@ private fun SetBudgetDialog(
                     value = budgetLimit,
                     onValueChange = { budgetLimit = it },
                     label = { Text("Budget Limit") },
+                    //placeholder = { Text("0.00") }, // This shows gray hint text when field is empty
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),

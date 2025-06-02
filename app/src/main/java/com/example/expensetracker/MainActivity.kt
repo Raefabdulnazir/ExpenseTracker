@@ -1,5 +1,6 @@
 package com.example.expensetracker
 
+import android.icu.text.DecimalFormat
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -17,6 +18,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,6 +26,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -47,6 +50,7 @@ import com.example.expensetracker.screens.AnalyticsScreen
 import com.example.expensetracker.screens.BudgetPlannerScreen
 import com.example.expensetracker.screens.CategoryManagementScreen
 import com.example.expensetracker.screens.SettingsScreen
+import com.example.expensetracker.utils.SettingsManager
 import com.example.expensetracker.viewmodel.AnalyticsViewModel
 import com.example.expensetracker.viewmodel.AnalyticsViewModelFactory
 import com.example.expensetracker.viewmodel.BudgetViewModel
@@ -54,6 +58,7 @@ import com.example.expensetracker.viewmodel.BudgetViewModelFactory
 import com.example.expensetracker.viewmodel.CategoryViewModel
 import com.example.expensetracker.viewmodel.CategoryViewModelFactory
 import com.example.expensetracker.work.NotificationScheduler
+import kotlinx.coroutines.launch
 import java.util.Calendar
 
 // Updated Screen class with icon resources
@@ -74,6 +79,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var categoryRepository: CategoryRepository
     private lateinit var budgetViewModel: BudgetViewModel
     private lateinit var analyticsViewModel: AnalyticsViewModel
+    private lateinit var settingsManager: SettingsManager
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -102,6 +108,10 @@ class MainActivity : ComponentActivity() {
             // Initialize dependencies
             expenseDatabase = ExpenseDatabase.getDatabase(applicationContext)
 
+            // Initialize SettingsManager FIRST
+            settingsManager = SettingsManager.getInstance(applicationContext)
+            Log.d("MainActivity", "SettingsManager initialized successfully")
+
             budgetRepository = BudgetRepository(expenseDatabase.budgetDao())
             expenseRepository = ExpenseRepository(expenseDatabase.expenseDao())
             incomeRepository = IncomeRepository(expenseDatabase.incomeDao())
@@ -113,6 +123,9 @@ class MainActivity : ComponentActivity() {
             // Resolve dependency
             expenseRepository.budgetViewModel = budgetViewModel
 
+            //Handle notification scheduling based on settings
+            setUpNotifications()
+
         } catch (e: Exception) {
             Log.e("MainActivity", "Error during initialization: ${e.message}", e)
             return
@@ -120,7 +133,13 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             Log.d("MainActivity", "Inside setContent block")
-            ExpenseTrackerTheme {
+
+            /* Observe theme settings from SettingsManager */
+            val isDarkMode by settingsManager.isDarkMode.collectAsState()
+
+            ExpenseTrackerTheme(
+                darkTheme = isDarkMode
+            ) {
                 Log.d("MainActivity", "Inside ExpenseTrackerTheme block")
 
                 // Provide the viewmodels with their factory
@@ -156,12 +175,31 @@ class MainActivity : ComponentActivity() {
                         budgetViewModel = budgetViewModel,
                         analyticsViewModel = analyticsViewModel,
                         categoryViewModel = categoryViewModel,
+                        settingsManager = settingsManager,
                         modifier = Modifier.padding(paddingValues)
                     )
                 }
             }
         }
     }
+
+    private fun setUpNotifications(){
+        //observe notification setting changes
+        lifecycleScope.launch {
+            settingsManager.notificationsEnabled.collect{ isEnabled ->
+                if(isEnabled){
+                    Log.d("MainActivity", "Scheduling notifications")
+                     NotificationScheduler.scheduleDailyNotification(this@MainActivity)
+                    //NotificationScheduler.testNotification(this@MainActivity)
+                } else {
+                    Log.d("MainActivity", "Cancelling notifications")
+                    // Cancel existing notifications
+                    WorkManager.getInstance(this@MainActivity).cancelAllWorkByTag("daily_notification_tag")
+                }
+            }
+        }
+    }
+
 }
 
 @Composable
@@ -232,6 +270,7 @@ fun SetUpNavGraph(
     budgetViewModel: BudgetViewModel,
     analyticsViewModel: AnalyticsViewModel,
     categoryViewModel: CategoryViewModel,
+    settingsManager: SettingsManager,
     modifier: Modifier = Modifier
 ) {
     val month = getCurrentMonth()
@@ -242,15 +281,16 @@ fun SetUpNavGraph(
         modifier = modifier
     ) {
         composable(Screen.Transaction.route) {
-            MainScreen(expenseViewModel, incomeViewModel, categoryViewModel)
+            MainScreen(expenseViewModel, incomeViewModel, categoryViewModel, settingsManager)
         }
         composable(Screen.Budget.route) {
-            BudgetPlannerScreen(budgetViewModel, categoryViewModel)
+            BudgetPlannerScreen(budgetViewModel, categoryViewModel, settingsManager)
         }
         composable(Screen.Analysis.route) {
             AnalyticsScreen(
                 viewModel = analyticsViewModel,
-                currentMonth = month
+                currentMonth = month,
+                settingsManager = settingsManager
             )
         }
         composable(Screen.Category.route) {
@@ -259,7 +299,9 @@ fun SetUpNavGraph(
             )
         }
         composable(Screen.Settings.route) {
-            SettingsScreen()
+            SettingsScreen(
+                settingsManager = settingsManager
+            )
         }
     }
 }
@@ -269,4 +311,8 @@ fun getCurrentMonth(): String {
     val month = calender.get(Calendar.MONTH) + 1
     val year = calender.get(Calendar.YEAR)
     return "$year-${month.toString().padStart(2,'0')}"
+}
+
+fun Double.formatAmount(): String {
+    return DecimalFormat("#,##0.00").format(this)
 }

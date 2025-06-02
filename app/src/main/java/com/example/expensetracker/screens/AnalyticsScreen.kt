@@ -47,16 +47,23 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import com.example.expensetracker.formatAmount
+import com.example.expensetracker.utils.SettingsManager
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AnalyticsScreen(
     viewModel: AnalyticsViewModel,
-    currentMonth: String
-) {
+    currentMonth: String,
+    settingsManager: SettingsManager
+    ) {
     var currentMonthForSelector by remember { mutableStateOf(LocalDate.now()) }
     var selectedMonth = currentMonthForSelector.toString().substring(0, 7)
     var isExpenseSelected by remember { mutableStateOf(true) }
+
+    // Observe settings from SettingsManager
+    val currencySymbol by settingsManager.currencySymbol.collectAsState()
+    val currencyCode by settingsManager.currencyCode.collectAsState()
 
     // Observe the StateFlow data from the ViewModel
     val pieChartData by viewModel.pieChartData.collectAsState(initial = emptyList())
@@ -109,7 +116,7 @@ fun AnalyticsScreen(
             // Breakdown Section
             if (chartData.isNotEmpty()) {
                 item {
-                    BreakdownSection(chartData = chartData)
+                    BreakdownSection(chartData = chartData, currencySymbol = currencySymbol)
                 }
             }
         }
@@ -279,7 +286,7 @@ private fun Legend(chartData: List<PieChartData>) {
 }
 
 @Composable
-private fun BreakdownSection(chartData: List<PieChartData>) {
+private fun BreakdownSection(chartData: List<PieChartData>,currencySymbol: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -300,7 +307,8 @@ private fun BreakdownSection(chartData: List<PieChartData>) {
             )
 
             chartData.forEach { data ->
-                val percentage = (data.value / chartData.sumOf { it.value } * 100).toInt()
+                val percentage = (data.value / chartData.sumOf { it.value } * 100)
+                val formattedPercentage = "%.2f".format(percentage)
 
                 Row(
                     modifier = Modifier
@@ -331,13 +339,13 @@ private fun BreakdownSection(chartData: List<PieChartData>) {
                         horizontalAlignment = Alignment.End
                     ) {
                         Text(
-                            text = "$${"%.2f".format(data.value)}",
+                            text = "$currencySymbol${(data.value).formatAmount()}",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "$percentage%",
+                            text = "$formattedPercentage%",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray,
                             fontSize = 11.sp

@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.expensetracker.model.Category
+import com.example.expensetracker.utils.SettingsManager
 import com.example.expensetracker.viewmodel.CategoryViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)

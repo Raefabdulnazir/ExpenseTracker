@@ -27,9 +27,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.expensetracker.formatAmount
 import com.example.expensetracker.getCurrentMonth
 import com.example.expensetracker.model.Expense
 import com.example.expensetracker.model.Income
+import com.example.expensetracker.utils.SettingsManager
 import com.example.expensetracker.viewmodel.CategoryViewModel
 import com.example.expensetracker.viewmodel.ExpenseViewModel
 import com.example.expensetracker.viewmodel.IncomeViewModel
@@ -43,11 +45,17 @@ import java.time.format.DateTimeFormatter
 fun MainScreen(
     expenseViewModel: ExpenseViewModel = viewModel(),
     incomeViewModel: IncomeViewModel = viewModel(),
-    categoryViewModel: CategoryViewModel = viewModel()
+    categoryViewModel: CategoryViewModel = viewModel(),
+    settingsManager: SettingsManager
 ) {
     var currentMonth by remember { mutableStateOf(LocalDate.now()) }
     var showAddTransactionDialog by remember { mutableStateOf(false) }
     var editTransaction by remember { mutableStateOf<Any?>(null) }
+
+
+    // Observe settings from SettingsManager
+    val currencySymbol by settingsManager.currencySymbol.collectAsState()
+    val currencyCode by settingsManager.currencyCode.collectAsState()
 
     // Observe data
     val incomesState = incomeViewModel.allIncomes.observeAsState()
@@ -80,7 +88,8 @@ fun MainScreen(
         SummarySection(
             totalBalance = totalBalance,
             totalIncome = totalIncome,
-            totalExpense = totalExpense
+            totalExpense = totalExpense,
+            currencySymbol = currencySymbol
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -90,6 +99,7 @@ fun MainScreen(
             TransactionsSection(
                 incomes = incomes,
                 expenses = expenses,
+                currencySymbol = currencySymbol,
                 onEditTransaction = { transaction ->
                     editTransaction = transaction
                     showAddTransactionDialog = true
@@ -199,13 +209,15 @@ fun MonthSelector(
 private fun SummarySection(
     totalBalance: Double,
     totalIncome: Double,
-    totalExpense: Double
+    totalExpense: Double,
+    currencySymbol: String,
 ) {
     Column {
         // Total Balance Card
         SummaryCard(
             title = "Total Balance",
             amount = totalBalance,
+            currencySymbol = currencySymbol,
             backgroundColor = MaterialTheme.colorScheme.primary,
             modifier = Modifier.fillMaxWidth()
         )
@@ -220,12 +232,14 @@ private fun SummarySection(
             SummaryCard(
                 title = "Total Income",
                 amount = totalIncome,
+                currencySymbol = currencySymbol,
                 backgroundColor = Color(0xFF4CAF50), // Green
                 modifier = Modifier.weight(1f)
             )
             SummaryCard(
                 title = "Total Expense",
                 amount = totalExpense,
+                currencySymbol = currencySymbol,
                 backgroundColor = Color(0xFFF44336), // Red
                 modifier = Modifier.weight(1f)
             )
@@ -237,6 +251,7 @@ private fun SummarySection(
 fun SummaryCard(
     title: String,
     amount: Double,
+    currencySymbol: String,
     backgroundColor: Color,
     modifier: Modifier = Modifier
 ) {
@@ -258,7 +273,8 @@ fun SummaryCard(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "$${"%.2f".format(amount)}",
+                //text = "$currencySymbol${"%.2f".format(amount)}",
+                text = "$currencySymbol${amount.formatAmount()}",
                 style = MaterialTheme.typography.headlineSmall,
                 color = Color.White,
                 fontWeight = FontWeight.Bold
@@ -272,6 +288,7 @@ fun SummaryCard(
 private fun TransactionsSection(
     incomes: List<Income>,
     expenses: List<Expense>,
+    currencySymbol: String,
     onEditTransaction: (Any) -> Unit,
     onDeleteTransaction: (Any) -> Unit
 ) {
@@ -281,6 +298,7 @@ private fun TransactionsSection(
         GroupedTransactionsList(
             incomes = incomes,
             expenses = expenses,
+            currencySymbol = currencySymbol,
             onEditTransaction = onEditTransaction,
             onDeleteTransaction = onDeleteTransaction
         )
@@ -316,6 +334,7 @@ private fun EmptyTransactionsState() {
 private fun GroupedTransactionsList(
     incomes: List<Income>,
     expenses: List<Expense>,
+    currencySymbol: String,
     onEditTransaction: (Any) -> Unit,
     onDeleteTransaction: (Any) -> Unit
 ) {
@@ -361,6 +380,7 @@ private fun GroupedTransactionsList(
                 items(transactions) { transaction ->
                     TransactionCard(
                         transaction = transaction,
+                        currencySymbol = currencySymbol,
                         onEdit = { onEditTransaction(transaction) },
                         onDelete = { onDeleteTransaction(transaction) }
                     )
@@ -397,6 +417,7 @@ private fun DateHeader(date: LocalDate) {
 @Composable
 private fun TransactionCard(
     transaction: Any,
+    currencySymbol: String,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -443,7 +464,7 @@ private fun TransactionCard(
             }
 
             Text(
-                text = "$${if (isExpense) "-" else "+"}${"%.2f".format(amount)}",
+                text = "$currencySymbol${if (isExpense) "-" else "+"}${amount.formatAmount()}",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
                 color = if (isExpense) Color.Red else Color.Green
