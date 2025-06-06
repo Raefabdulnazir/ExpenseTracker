@@ -90,8 +90,10 @@ class MainActivity : ComponentActivity() {
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 100)
         }
 
-        Log.d("Main activity","Scheduling Notification")
-        NotificationScheduler.scheduleDailyNotification(this)
+        //for testing the notification , just uncomment this code
+        /*Log.d("Main activity","Scheduling Notification")
+        //NotificationScheduler.scheduleDailyNotification(this)
+        NotificationScheduler.testNotification(this)
 
         // For debugging: observe work status
         WorkManager.getInstance(this).getWorkInfosByTagLiveData("daily_notification_tag")
@@ -100,7 +102,7 @@ class MainActivity : ComponentActivity() {
                 for (workInfo in workInfoList) {
                     Log.d("MainActivity", "Work status: ${workInfo.state}")
                 }
-            }
+            }*/
 
         enableEdgeToEdge()
 

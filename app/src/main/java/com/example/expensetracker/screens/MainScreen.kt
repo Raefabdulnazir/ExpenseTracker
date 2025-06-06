@@ -70,64 +70,112 @@ fun MainScreen(
     val totalExpense = expenses.sumOf { it.amount }
     val totalBalance = totalIncome - totalExpense
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        // Month Selector
-        MonthSelector(
-            currentMonth = currentMonth,
-            onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
-            onNextMonth = { currentMonth = currentMonth.plusMonths(1) }
-        )
+    Box(modifier = Modifier.fillMaxSize()) {
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // Scrollable content
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(bottom = 80.dp) // Space for button
+        ) {
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                // Month Selector
+                MonthSelector(
+                    currentMonth = currentMonth,
+                    onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
+                    onNextMonth = { currentMonth = currentMonth.plusMonths(1) }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
-        // Summary Cards Section
-        SummarySection(
-            totalBalance = totalBalance,
-            totalIncome = totalIncome,
-            totalExpense = totalExpense,
-            currencySymbol = currencySymbol
-        )
+            item {
+                SummarySection(
+                    totalBalance = totalBalance,
+                    totalIncome = totalIncome,
+                    totalExpense = totalExpense,
+                    currencySymbol = currencySymbol
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+            }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Transactions Section
-        Box(modifier = Modifier.weight(1f)) {
-            TransactionsSection(
-                incomes = incomes,
-                expenses = expenses,
-                currencySymbol = currencySymbol,
-                onEditTransaction = { transaction ->
-                    editTransaction = transaction
-                    showAddTransactionDialog = true
-                },
-                onDeleteTransaction = { transaction ->
-                    when (transaction) {
-                        is Income -> incomeViewModel.delete(transaction)
-                        is Expense -> expenseViewModel.delete(transaction)
+            // Transactions Section
+            if (incomes.isEmpty() && expenses.isEmpty()) {
+                item {
+                    EmptyTransactionsState()
+                }
+            } else {
+                item {
+                    Text(
+                        text = "Recent Transactions",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+                // Group and display transactions
+                val combinedList = (incomes + expenses).sortedByDescending { item ->
+                    when (item) {
+                        is Income -> item.date
+                        is Expense -> item.date
+                        else -> 0L
                     }
                 }
-            )
+
+                val groupedTransactions = combinedList.groupBy { transaction ->
+                    val date = when (transaction) {
+                        is Income -> transaction.date
+                        is Expense -> transaction.date
+                        else -> 0L
+                    }
+                    Instant.ofEpochMilli(date).atZone(ZoneId.systemDefault()).toLocalDate()
+                }
+
+                groupedTransactions.forEach { (date, transactions) ->
+                    item {
+                        DateHeader(date = date)
+                    }
+                    items(transactions) { transaction ->
+                        TransactionCard(
+                            transaction = transaction,
+                            currencySymbol = currencySymbol,
+                            onEdit = {
+                                editTransaction = transaction
+                                showAddTransactionDialog = true
+                            },
+                            onDelete = {
+                                when (transaction) {
+                                    is Income -> incomeViewModel.delete(transaction)
+                                    is Expense -> expenseViewModel.delete(transaction)
+                                }
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                }
+            }
         }
 
-        // Add Transaction Button
+        // Fixed Add Transaction Button at bottom
         Button(
             onClick = {
                 editTransaction = null
                 showAddTransactionDialog = true
             },
             modifier = Modifier
+                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            shape = RoundedCornerShape(12.dp)
+                .padding(16.dp),
+            shape = RoundedCornerShape(12.dp),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
         ) {
             Text(
                 text = "Add Transaction",
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(vertical = 4.dp)
             )
         }
     }
@@ -186,14 +234,12 @@ fun MonthSelector(
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
-
             Text(
                 text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-
             IconButton(onClick = onNextMonth) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
@@ -212,7 +258,7 @@ private fun SummarySection(
     totalExpense: Double,
     currencySymbol: String,
 ) {
-    Column {
+    Column (verticalArrangement = Arrangement.spacedBy(12.dp)){
         // Total Balance Card
         SummaryCard(
             title = "Total Balance",
@@ -222,28 +268,21 @@ private fun SummarySection(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        SummaryCard(
+            title = "Total Income",
+            amount = totalIncome,
+            currencySymbol = currencySymbol,
+            backgroundColor = Color(0xFF4CAF50), // Green
+            modifier = Modifier.fillMaxWidth()
+        )
+        SummaryCard(
+            title = "Total Expense",
+            amount = totalExpense,
+            currencySymbol = currencySymbol,
+            backgroundColor = Color(0xFFF44336), // Red
+            modifier = Modifier.fillMaxWidth()
+        )
 
-        // Income and Expense Cards Row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            SummaryCard(
-                title = "Total Income",
-                amount = totalIncome,
-                currencySymbol = currencySymbol,
-                backgroundColor = Color(0xFF4CAF50), // Green
-                modifier = Modifier.weight(1f)
-            )
-            SummaryCard(
-                title = "Total Expense",
-                amount = totalExpense,
-                currencySymbol = currencySymbol,
-                backgroundColor = Color(0xFFF44336), // Red
-                modifier = Modifier.weight(1f)
-            )
-        }
     }
 }
 
@@ -265,13 +304,18 @@ fun SummaryCard(
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(modifier = Modifier.height(4.dp))
+            Box(    //fixed centered title
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ){
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 //text = "$currencySymbol${"%.2f".format(amount)}",
                 text = "$currencySymbol${amount.formatAmount()}",

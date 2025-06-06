@@ -55,7 +55,7 @@ class DailyNotificationWorker(
 
         //2. Build the notification
         val notification = NotificationCompat.Builder(applicationContext,channelid)
-            .setContentTitle("Expense Tracker")
+            .setContentTitle("MoneyNest")
             .setContentText("Don't forget to enter your expenses or income")
             .setSmallIcon(R.drawable.ic_notification)   // you need an icon in drawable
             .setPriority(NotificationCompat.PRIORITY_HIGH)
