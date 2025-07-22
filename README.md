@@ -37,6 +37,34 @@ MoneyNest is a simple, intuitive, and privacy-focused personal expense tracker a
 
 ---
 
+### 📱 App Screenshots
+
+#### 🏠 Main Page
+The screen where you can **add and view your expenses and incomes**.  
+![Main Page](screenshots/main%20page.jpg)
+
+#### 🗂️ Category Page
+Here you can **add or delete expense/income categories**.  
+![Category Page](screenshots/category%20pag.jpg)
+
+#### 💰 Budget Page
+Used to **set a budget limit for each category**.  
+![Budget Page](screenshots/budget%20page.jpg)
+
+#### 📊 Analysis Page
+Displays a **pie chart of earnings and expenses**.  
+![Analysis Page](screenshots/analysis%20page.jpg)
+
+#### ➕ Add Transaction Menu
+Shows an **alert menu** to select a category and enter an amount.  
+![Add Transaction Menu](screenshots/add%20txn%20menu.jpg)
+
+#### ⚙️ Settings Page
+Manage app preferences, currency, theme, and more.  
+![Settings Page](screenshots/settings%20page.jpg)
+
+---
+
 ## 🌍 Target Audience
 
 MoneyNest is designed for individuals who want an easy-to-use and privacy-respecting app to manage daily expenses and budgets without unnecessary complexity. It’s ideal for working professionals, students, and anyone looking to build better financial habits.
