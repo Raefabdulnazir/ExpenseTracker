@@ -1,20 +1,25 @@
-plugins {
+/*plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     id("kotlin-kapt") // Apply kapt plugin
-    id("com.google.devtools.ksp") version "1.9.0-1.0.13" // Apply ksp plugin
+    //id("com.google.devtools.ksp") version "2.0.0-1.0.21" // Apply ksp plugin
+}*/
+
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose") version "2.0.0"
+    id("com.google.devtools.ksp") version "2.0.0-1.0.21"
 }
-
 android {
-    namespace = "com.example.expensetracker"
-    compileSdk = 34
-
+    namespace = "com.moneynest.expensetracker"
+    compileSdk = 35
     defaultConfig {
-        applicationId = "com.example.expensetracker"
+        applicationId = "com.moneynest.expensetracker"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 35
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -36,20 +41,27 @@ android {
         targetCompatibility = JavaVersion.VERSION_1_8
     }
     kotlinOptions {
+        //jvmTarget = "1.8"
         jvmTarget = "1.8"
     }
+    /*kotlin {
+        jvmToolchain(17)
+    }*/
     buildFeatures {
         compose = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
-    }
+    /*composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.15"
+    }*/
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
 }
+
+
 
 dependencies {
 
@@ -73,17 +85,17 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.0") // Or latest version
-    implementation("androidx.compose.ui:ui:1.5.0") // Or latest version
-    implementation("androidx.compose.material3:material3:1.0.1") // Or latest version
-    implementation("androidx.compose.ui:ui-tooling-preview:1.5.0")  // For preview support
+    //implementation("androidx.compose.ui:ui:1.5.0") // Or latest version
+    //implementation("androidx.compose.material3:material3:1.0.1") // Or latest version
+    //implementation("androidx.compose.ui:ui-tooling-preview:1.5.0")  // For preview support
 
-    implementation("androidx.compose.runtime:runtime-livedata:1.7.1")
+    //implementation("androidx.compose.runtime:runtime-livedata:1.7.1")
 
     val room_version = "2.6.1"
 
     implementation("androidx.room:room-runtime:$room_version")
     //annotationProcessor("androidx.room:room-compiler:$room_version")
-    kapt("androidx.room:room-compiler:$room_version")
+    ksp("androidx.room:room-compiler:$room_version")
 
     // To use Kotlin annotation processing tool (kapt)
     //kapt("androidx.room:room-compiler:$room_version")
