@@ -75,7 +75,7 @@ MoneyNest is designed for individuals who want an easy-to-use and privacy-respec
 
 - ✅ **v1.0.0**: First closed testing release on Google Play.
 - ✅ **v1.1.0**: Updated to **Target SDK 35**, revamped UI for category and currency selection, added search functionality.
-- ⏳ Currently in **closed testing phase** for production eligibility on Google Play.
+- ✅ **v1.2.0**: Available in Google playstore
 
 ---
 
@@ -83,7 +83,7 @@ MoneyNest is designed for individuals who want an easy-to-use and privacy-respec
 
 - ✔️ Closed testing completed for v1.
 - ✔️ v1.1 uploaded to a new closed test track.
-- 🚧 Waiting for completion of 14-day closed test with 12+ testers to apply for production release.
+- ✔️ v1.2 uploaded to google playstore
 
 ---
 
